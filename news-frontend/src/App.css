@@ -1,0 +1,27 @@
+.App {
+  min-height: 100vh;
+}
+
+.navbar-brand {
+  font-weight: bold;
+  font-size: 1.5rem;
+}
+
+/* Custom styles cho navbar */
+.navbar-dark .navbar-nav .nav-link {
+  color: rgba(255,255,255,.8);
+}
+
+.navbar-dark .navbar-nav .nav-link:hover {
+  color: rgba(255,255,255,1);
+}
+
+.dropdown-menu {
+  border: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Main content styling */
+.main-content {
+  margin-top: 4.5rem; /* 40px tương đương với mt-10 trong Tailwind */
+}
