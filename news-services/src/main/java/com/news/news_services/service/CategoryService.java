@@ -22,11 +22,21 @@ public class CategoryService {
     public List<Category> getAllCategory(){
         return categoryRepository.findAll();
     }
-
-
-
     
     public Optional<Category> getCategoryBySlug(String slug){
         return categoryRepository.findBySlugAndIsActiveTrue(slug);
+    }
+
+    // Lấy subcategories theo parent slug
+    public List<Category> getSubcategoriesByParentSlug(String parentSlug) {
+        Optional<Category> parent = categoryRepository.findBySlugAndIsActiveTrue(parentSlug);
+        if (parent.isPresent()) {
+            return categoryRepository.findByParentAndIsActiveTrueOrderBySortOrder(parent.get());
+        }
+        return List.of();
+    }
+
+    public List<Category> getAllActiveCategories() {
+        return categoryRepository.findAllActiveOrderBySortAndLevel();
     }
 }

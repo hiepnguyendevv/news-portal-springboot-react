@@ -25,28 +25,6 @@ const Home = () => {
     }
   };
 
-  const handleImportData = async () => {
-    try {
-      setLoading(true);
-      const response = await newsAPI.importSampleData();
-      await fetchNews();
-      alert('Import dữ liệu mẫu thành công!');
-    } catch (err) {
-      console.error('Import error:', err);
-      alert('Lỗi khi import dữ liệu: ' + (err.response?.data?.message || err.message));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleTestConnection = async () => {
-    try {
-      const response = await newsAPI.getAllNews();
-      alert(`Kết nối thành công! Có ${response.data.length} tin tức.`);
-    } catch (err) {
-      alert('Lỗi kết nối backend: ' + (err.response?.data || err.message));
-    }
-  };
 
   if (loading) {
     return (

@@ -6,6 +6,7 @@ import NewsCard from '../components/NewsCard';
 const Category = () => {
   const { category } = useParams();
   const [categoryInfo, setCategoryInfo] = useState(null);
+  const [subcategories, setSubcategories] = useState([]);
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -13,6 +14,7 @@ const Category = () => {
   useEffect(() => {
     fetchNewsByCategory();
     fetchCategoryBySlug();
+    fetchSubcategories();
   }, [category]);
 
   const fetchNewsByCategory = async () => {
@@ -36,6 +38,16 @@ const Category = () => {
       setCategoryInfo(response.data);
     } catch (err) {
       console.error('Error fetching category by slug:', err);
+    }
+  };
+
+  const fetchSubcategories = async () => {
+    try {
+      const response = await newsAPI.getSubcategoriesByParent(decodeURIComponent(category));
+      setSubcategories(response.data);
+    } catch (err) {
+      console.error('Error fetching subcategories:', err);
+      setSubcategories([]);
     }
   };
 
@@ -63,12 +75,48 @@ const Category = () => {
       </nav>
 
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1>Chuyên mục: {categoryInfo?.name || "loi"}</h1>
+        <div>
+          <h1>Chuyên mục: {categoryInfo?.name || decodeURIComponent(category)}</h1>
+          {categoryInfo?.description && (
+            <p className="text-muted mb-0">{categoryInfo.description}</p>
+          )}
+        </div>
         <button className="btn btn-outline-primary" onClick={fetchNewsByCategory}>
           <i className="fas fa-sync-alt me-1"></i>
           Làm mới
         </button>
       </div>
+
+      {/* Subcategories Section */}
+      {subcategories.length > 0 && (
+        <div className="mb-4">
+          <h5 className="mb-3">
+            <i className="fas fa-list me-2"></i>
+            Chuyên mục con
+          </h5>
+          <div className="row">
+            {subcategories.map(subcat => (
+              <div key={subcat.id} className="col-md-4 col-sm-6 mb-3">
+                <Link 
+                  to={`/category/${subcat.slug || subcat.name}`}
+                  className="text-decoration-none"
+                >
+                  <div className="card h-100 border-0 shadow-sm hover-card">
+                    <div className="card-body text-center">
+                      <i className="fas fa-folder-open fa-2x text-primary mb-2"></i>
+                      <h6 className="card-title">{subcat.name}</h6>
+                      <p className="card-text text-muted small">
+                        {subcat.description}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              </div>
+            ))}
+          </div>
+          <hr className="my-4" />
+        </div>
+      )}
 
       {error && (
         <div className="error-message">
@@ -77,13 +125,25 @@ const Category = () => {
         </div>
       )}
 
+      {/* News Section */}
+      <div className="mb-3">
+        <h5>
+          <i className="fas fa-newspaper me-2"></i>
+          Tin tức ({news.length})
+        </h5>
+      </div>
+
       {news.length === 0 && !error ? (
         <div className="text-center py-5">
           <i className="fas fa-newspaper fa-3x text-muted mb-3"></i>
           <h4 className="text-muted">Chưa có tin tức nào trong chuyên mục này</h4>
-          <Link to="/" className="btn btn-primary mt-3">
-            Về trang chủ
-          </Link>
+          {subcategories.length > 0 ? (
+            <p className="text-muted">Hãy thử xem các chuyên mục con ở trên</p>
+          ) : (
+            <Link to="/" className="btn btn-primary mt-3">
+              Về trang chủ
+            </Link>
+          )}
         </div>
       ) : (
         <div className="row">

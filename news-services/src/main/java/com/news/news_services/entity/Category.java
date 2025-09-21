@@ -31,7 +31,7 @@ public class Category {
     private String description;
 
     @Column(name = "slug", length = 100, unique = true)
-    private String slug; 
+    private String slug;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")

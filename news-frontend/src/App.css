@@ -23,5 +23,47 @@
 
 /* Main content styling */
 .main-content {
-  margin-top: 4.5rem; /* 40px tương đương với mt-10 trong Tailwind */
+  margin-top: 0.5rem; /* 40px tương đương với mt-10 trong Tailwind */
+}
+
+/* Subcategory card hover effect */
+.hover-card {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.hover-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+.hover-card .card-body {
+  transition: all 0.3s ease;
+}
+
+.hover-card:hover .card-body {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.hover-card:hover .text-primary {
+  color: #0056b3 !important;
+  transform: scale(1.1);
+}
+
+/* Loading spinner */
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+/* Error message */
+.error-message {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 12px 15px;
+  border-radius: 5px;
+  border: 1px solid #f5c6cb;
+  margin-bottom: 20px;
 }

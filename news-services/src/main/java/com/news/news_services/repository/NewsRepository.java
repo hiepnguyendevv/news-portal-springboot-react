@@ -17,23 +17,15 @@ public interface NewsRepository extends JpaRepository<News, Long> {
     // Tìm tin đã xuất bản
     List<News> findByPublishedTrueOrderByCreatedAtDesc();
 
-    // Tìm tin theo tác giả
-    List<News> findByAuthorAndPublishedTrueOrderByCreatedAtDesc(User author);
 
-    // Tìm tin nổi bật
-    List<News> findByFeaturedTrueAndPublishedTrueOrderByCreatedAtDesc();
-
-    // Tìm theo slug
-    Optional<News> findBySlugAndPublishedTrue(String slug);
-
-    // Tìm kiếm trong title và content
+    // Tìm kiếm
     @Query("SELECT n FROM News n WHERE n.published = true AND " +
             "(LOWER(n.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(n.content) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
             "ORDER BY n.createdAt DESC")
     List<News> searchByKeyword(@Param("keyword") String keyword);
 
-    // Thêm method này vào NewsRepository.java
+
     @Query("SELECT n FROM News n JOIN n.category c WHERE n.published = true AND c.name = :categoryName ORDER BY n.createdAt DESC")
     List<News> findByCategoryNameAndPublishedTrueOrderByCreatedAtDesc(@Param("categoryName") String categoryName);
 
@@ -41,12 +33,8 @@ public interface NewsRepository extends JpaRepository<News, Long> {
     @Query("SELECT n FROM News n JOIN n.category c WHERE n.published = true AND c.slug = :categorySlug ORDER BY n.createdAt DESC")
     List<News> findByCategorySlugAndPublishedTrueOrderByCreatedAtDesc(@Param("categorySlug") String categorySlug);
 
-     // Đếm tin theo category
-    Long countByCategoryAndPublishedTrue(Category category);
+    long countByCategoryId(Long categoryId);
 
-    // Đếm tin theo tác giả
-    Long countByAuthorAndPublishedTrue(User author);
-
-    // Tin có nhiều view nhất
-    List<News> findByPublishedTrueOrderByViewCountDesc();
+    // Lấy tin tức của user theo authorId
+    List<News> findByAuthorIdOrderByCreatedAtDesc(Long authorId);
 }

@@ -24,18 +24,17 @@ const NewsCard = ({ news }) => {
   };
 
   return (
-    <div className="col-md-6 col-lg-4 mb-4">
+    <div className="col-12 col-md-6 col-lg-4 mb-4">
       <div className="card news-card h-100">
-        {news.imageUrl && (
-          <img 
-            src={news.imageUrl} 
-            className="card-img-top news-image" 
-            alt={news.title}
-            onError={(e) => {
-              e.target.src = 'https://via.placeholder.com/400x200?text=No+Image';
-            }}
-          />
-        )}
+        <img 
+          src={news.imageUrl || 'https://via.placeholder.com/800x450?text=No+Image'}
+          className="card-img-top"
+          alt={news.title}
+          style={{ width: '100%', height: '200px', objectFit: 'cover' }}
+          onError={(e) => {
+            e.target.src = 'https://via.placeholder.com/800x450?text=No+Image';
+          }}
+        />
         
         <div className="card-body d-flex flex-column">
           <div className="mb-2">

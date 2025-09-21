@@ -70,8 +70,6 @@ public class User {
     // Enum cho Role
     public enum UserRole {
         ADMIN,      // Quản trị viên
-        EDITOR,     // Biên tập viên
-        AUTHOR,     // Tác giả
         USER        // Người dùng thường
     }
 
@@ -148,20 +146,5 @@ public class User {
 
 
 
-    public boolean isEditor() {
-        return role == UserRole.EDITOR;
-    }
-
-    public boolean isAuthor() {
-        return role == UserRole.AUTHOR;
-    }
-
-    public boolean canWriteNews() {
-        return role == UserRole.ADMIN || role == UserRole.EDITOR || role == UserRole.AUTHOR;
-    }
-
-    public boolean isActive() {
-        return status == UserStatus.ACTIVE;
-    }
 
 }
