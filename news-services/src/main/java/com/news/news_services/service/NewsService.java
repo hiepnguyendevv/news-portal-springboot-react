@@ -112,13 +112,12 @@ public class NewsService {
 
     @Transactional
     private void createSimpleSampleData() {
-        // 🔐 Tạo user admin với mật khẩu đã mã hóa
         User admin = userRepository.findByUsername("admin")
                 .orElseGet(() -> {
                     User user = new User();
                     user.setUsername("admin");
                     user.setEmail("admin@news.com");
-                    user.setPassword(passwordEncoder.encode("admin123")); // 🔧 Mã hóa mật khẩu
+                    user.setPassword(passwordEncoder.encode("admin123")); 
                     user.setFullName("Quản trị viên");
                     user.setRole(User.UserRole.ADMIN);
                     user.setStatus(User.UserStatus.ACTIVE);
@@ -256,7 +255,7 @@ public class NewsService {
                                   Category category, User author) {
         News news = new News();
         String slugName = helperService.toSlug(title);
-        int number = ThreadLocalRandom.current().nextInt(1, 2001); // 1 → 2000
+        int number = ThreadLocalRandom.current().nextInt(1, 2001); 
         String numImg = String.valueOf(number);
         news.setTitle(title);
         news.setSummary(summary);

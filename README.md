@@ -124,6 +124,23 @@ Truy cập trực tiếp: `http://localhost:8080/api/news/import-sample-data` (P
 - Các danh mục tin tức (Công nghệ, Thể thao, Kinh tế...)
 - 20+ tin tức mẫu với hình ảnh ngẫu nhiên
 
+## 🔐 Thông tin tài khoản Admin
+
+Sau khi import dữ liệu mẫu, bạn có thể đăng nhập với tài khoản admin:
+
+- **Username:** `admin`
+- **Password:** `admin123`
+- **Email:** `admin@news.com`
+- **Quyền:** ADMIN (có thể quản lý tất cả chức năng)
+
+**Cách đăng nhập:**
+1. Truy cập `http://localhost:3000/login`
+2. Nhập username: `admin`
+3. Nhập password: `admin123`
+4. Click "Đăng nhập"
+
+Sau khi đăng nhập, bạn sẽ có quyền truy cập vào trang Admin để quản lý người dùng, danh mục và tin tức.
+
 ## 📱 Tính năng chính
 
 ### Cho người dùng thường:
