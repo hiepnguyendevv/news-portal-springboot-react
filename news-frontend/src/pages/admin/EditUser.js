@@ -34,7 +34,7 @@ const EditUser = () => {
         username: userData.username || '',
         email: userData.email || '',
         fullName: userData.fullName || '',
-        password: '', // Don't pre-fill password
+        password: '', 
         role: userData.role || 'USER',
         status: userData.status || 'ACTIVE'
       });
@@ -64,7 +64,7 @@ const EditUser = () => {
     try {
       const updateData = { ...formData };
       if (!updateData.password) {
-        delete updateData.password; // Remove empty password
+        delete updateData.password; 
       }
       
       await newsAPI.updateUser(id, updateData);
@@ -166,8 +166,7 @@ const EditUser = () => {
                       <label className="form-label">Vai trò</label>
                       <select className="form-select" name="role" value={formData.role} onChange={handleChange}>
                         <option value="USER">Người dùng</option>
-                        <option value="AUTHOR">Tác giả</option>
-                        <option value="EDITOR">Biên tập viên</option>
+              
                         <option value="ADMIN">Quản trị viên</option>
                       </select>
                     </div>

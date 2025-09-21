@@ -3,7 +3,6 @@ import { newsAPI } from '../services/api';
 
 const AuthContext = createContext();
 
-// Custom hook để sử dụng AuthContext
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -29,7 +28,6 @@ export const AuthProvider = ({ children }) => {
         const response = await newsAPI.getCurrentUser();
         const userData = response.data;
         
-        // ✅ Kiểm tra user status
         if (userData.status !== 'ACTIVE') {
           localStorage.removeItem('token');
           setIsAuthenticated(false);

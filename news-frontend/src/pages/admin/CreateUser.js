@@ -120,8 +120,7 @@ const CreateUser = () => {
                       <label className="form-label">Vai trò</label>
                       <select className="form-select" name="role" value={formData.role} onChange={handleChange}>
                         <option value="USER">Người dùng</option>
-                        <option value="AUTHOR">Tác giả</option>
-                        <option value="EDITOR">Biên tập viên</option>
+
                         <option value="ADMIN">Quản trị viên</option>
                       </select>
                     </div>

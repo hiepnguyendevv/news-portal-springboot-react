@@ -4,6 +4,8 @@ import { useAuth } from '../components/AuthContext';
 
 const Admin = () => {
 
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -35,6 +37,20 @@ const Admin = () => {
             <i className="fas fa-cog me-2"></i>
             Quản trị hệ thống
           </h2>
+
+          {error && (
+            <div className="alert alert-danger" role="alert">
+              <i className="fas fa-exclamation-circle me-2"></i>
+              {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="alert alert-success" role="alert">
+              <i className="fas fa-check-circle me-2"></i>
+              {success}
+            </div>
+          )}
         </div>
       </div>
 
