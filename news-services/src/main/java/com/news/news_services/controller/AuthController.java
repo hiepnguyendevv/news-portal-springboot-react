@@ -107,31 +107,6 @@ public class AuthController {
             return ResponseEntity.badRequest().body(error);
         }
     }
-    @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser() {
-        try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
-
-            User user = userRepository.findById(userPrincipal.getId())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("id", user.getId());
-            response.put("username", user.getUsername());
-            response.put("email", user.getEmail());
-            response.put("fullName", user.getFullName());
-            response.put("role", user.getRole().name());
-            response.put("status", user.getStatus().name());
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Không thể lấy thông tin user: " + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
-        }
-    }
 
     @PostMapping("/logout")
     public ResponseEntity<?> logoutUser() {

@@ -39,9 +39,6 @@ export const newsAPI = {
    getAllNews: async () => api.get("/news"),
    getNewsById: async (id) => api.get(`/news/${id}`), 
    getPublishedNews: async () => api.get("/news/published"),
-   importSampleData: async () => api.post("/news/import-data"),
-   addSampleNews: async () => api.post("/news/add-sample"),
-   clearAllData: async () => api.post("/news/clear-all-data"),
    getNewsByCategory: async (category) => api.get(`/news/category/${category}`),
    getNewsByCategorySlug: async (slug) => api.get(`/news/category/slug/${slug}`),
    searchNews: async (keyword) => api.get(`/news/search?keyword=${encodeURIComponent(keyword)}`),
@@ -81,7 +78,6 @@ export const newsAPI = {
    // Auth APIs
    login: async (credentials) => api.post("/auth/signin", credentials),
    signup: async (userData) => api.post("/auth/signup", userData),
-   getCurrentUser: async () => api.get("/auth/me"), // ⭐ THÊM DÒNG NÀY
 
    logout: async () => api.post("/auth/logout"),
 }; 

@@ -1,13 +1,9 @@
 import React, { useState, useEffect } from 'react';
   import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../components/AuthContext';
-import { newsAPI } from '../services/api';
 
 const Admin = () => {
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -19,34 +15,7 @@ const Admin = () => {
     }
   }, [user]);
 
-  const handleImportSampleData = async () => {
-    try {
-      setLoading(true);
-      const response = await newsAPI.importSampleData();
-      setSuccess('Import dữ liệu mẫu thành công!');
-    } catch (err) {
-      setError('Lỗi khi import dữ liệu: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleClearAllData = async () => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa tất cả dữ liệu? Hành động này không thể hoàn tác!')) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const response = await newsAPI.clearAllData();
-      setSuccess('Xóa tất cả dữ liệu thành công!');
-    } catch (err) {
-      setError('Lỗi khi xóa dữ liệu: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+ 
   if (user?.role !== 'ADMIN') {
     return (
       <div className="container py-5">
@@ -66,20 +35,6 @@ const Admin = () => {
             <i className="fas fa-cog me-2"></i>
             Quản trị hệ thống
           </h2>
-
-          {error && (
-            <div className="alert alert-danger" role="alert">
-              <i className="fas fa-exclamation-circle me-2"></i>
-              {error}
-            </div>
-          )}
-
-          {success && (
-            <div className="alert alert-success" role="alert">
-              <i className="fas fa-check-circle me-2"></i>
-              {success}
-            </div>
-          )}
         </div>
       </div>
 
