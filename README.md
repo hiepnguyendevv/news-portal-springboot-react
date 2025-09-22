@@ -27,6 +27,49 @@
 - **MySQL 8.0+**
 - **Maven 3.6+**
 
+## 🐳 Chạy với Docker
+
+Nếu bạn muốn chạy project với Docker, đây là cách đơn giản nhất:
+
+### Yêu cầu:
+- **Docker** và **Docker Compose** đã cài đặt
+- Không cần cài đặt Java, Node.js hay MySQL riêng
+
+### Cách chạy:
+
+1. **Mở terminal tại thư mục gốc project:**
+   ```bash
+   cd Project-news
+   ```
+
+2. **Chạy tất cả services với Docker Compose:**
+   ```bash
+   docker-compose up --build
+   ```
+
+3. **Truy cập ứng dụng:**
+   - **Frontend:** `http://localhost:3000`
+   - **Backend:** `http://localhost:8080`
+   - **MySQL:** `localhost:3307` (username: `root`, password: `hiep2003`)
+
+### Các lệnh Docker hữu ích:
+
+```bash
+# Chạy ở background
+docker-compose up -d
+
+# Dừng tất cả services
+docker-compose down
+
+
+```
+
+### Cấu trúc Docker:
+- **MySQL 8.0** - Database (port 3307)
+- **Spring Boot** - Backend API (port 8080)
+- **React + Nginx** - Frontend (port 3000)
+=
+
 ## 🚀 Hướng dẫn cài đặt và chạy project
 
 ### Bước 1: Clone repository
@@ -92,48 +135,7 @@ cd Project-news
 
 4. **Frontend sẽ chạy tại:** `http://localhost:3000`
 
-## 🐳 Chạy với Docker
 
-Nếu bạn muốn chạy project với Docker, đây là cách đơn giản nhất:
-
-### Yêu cầu:
-- **Docker** và **Docker Compose** đã cài đặt
-- Không cần cài đặt Java, Node.js hay MySQL riêng
-
-### Cách chạy:
-
-1. **Mở terminal tại thư mục gốc project:**
-   ```bash
-   cd Project-news
-   ```
-
-2. **Chạy tất cả services với Docker Compose:**
-   ```bash
-   docker-compose up --build
-   ```
-
-3. **Truy cập ứng dụng:**
-   - **Frontend:** `http://localhost:3000`
-   - **Backend:** `http://localhost:8080`
-   - **MySQL:** `localhost:3307` (username: `root`, password: `hiep2003`)
-
-### Các lệnh Docker hữu ích:
-
-```bash
-# Chạy ở background
-docker-compose up -d
-
-# Dừng tất cả services
-docker-compose down
-
-
-```
-
-### Cấu trúc Docker:
-- **MySQL 8.0** - Database (port 3307)
-- **Spring Boot** - Backend API (port 8080)
-- **React + Nginx** - Frontend (port 3000)
-=
 ## 📊 Import dữ liệu mẫu
 
 Sau khi chạy backend thành công (cả Docker và cách thông thường), bạn có thể import dữ liệu mẫu:
