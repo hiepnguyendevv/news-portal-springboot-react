@@ -92,11 +92,53 @@ cd Project-news
 
 4. **Frontend sẽ chạy tại:** `http://localhost:3000`
 
+## 🐳 Chạy với Docker
+
+Nếu bạn muốn chạy project với Docker, đây là cách đơn giản nhất:
+
+### Yêu cầu:
+- **Docker** và **Docker Compose** đã cài đặt
+- Không cần cài đặt Java, Node.js hay MySQL riêng
+
+### Cách chạy:
+
+1. **Mở terminal tại thư mục gốc project:**
+   ```bash
+   cd Project-news
+   ```
+
+2. **Chạy tất cả services với Docker Compose:**
+   ```bash
+   docker-compose up --build
+   ```
+
+3. **Truy cập ứng dụng:**
+   - **Frontend:** `http://localhost:3000`
+   - **Backend:** `http://localhost:8080`
+   - **MySQL:** `localhost:3307` (username: `root`, password: `hiep2003`)
+
+### Các lệnh Docker hữu ích:
+
+```bash
+# Chạy ở background
+docker-compose up -d
+
+# Dừng tất cả services
+docker-compose down
+
+
+```
+
+### Cấu trúc Docker:
+- **MySQL 8.0** - Database (port 3307)
+- **Spring Boot** - Backend API (port 8080)
+- **React + Nginx** - Frontend (port 3000)
+=
 ## 📊 Import dữ liệu mẫu
 
-Sau khi chạy backend thành công, bạn có thể import dữ liệu mẫu bằng Postman:
+Sau khi chạy backend thành công (cả Docker và cách thông thường), bạn có thể import dữ liệu mẫu:
 
-### Cách 1: Sử dụng Postman
+### Cách 1: Sử dụng Postman 
 
 1. **Mở Postman** và tạo request mới
 2. **Thiết lập request:**
@@ -115,9 +157,8 @@ curl -X POST http://localhost:8080/api/news/import-sample-data \
   -d "{}"
 ```
 
-### Cách 3: Sử dụng trình duyệt
 
-Truy cập trực tiếp: `http://localhost:8080/api/news/import-sample-data` (POST request)
+```
 
 **Lưu ý:** Dữ liệu mẫu bao gồm:
 - 1 tài khoản admin (username: `admin`, password: `admin123`)
@@ -140,6 +181,7 @@ Sau khi import dữ liệu mẫu, bạn có thể đăng nhập với tài kho�
 4. Click "Đăng nhập"
 
 Sau khi đăng nhập, bạn sẽ có quyền truy cập vào trang Admin để quản lý người dùng, danh mục và tin tức.
+
 
 ## 📱 Tính năng chính
 
@@ -184,6 +226,32 @@ Sau khi đăng nhập, bạn sẽ có quyền truy cập vào trang Admin để 
 
 ### Lỗi thường gặp:
 
+#### Với Docker:
+
+1. **Lỗi build Docker:**
+   ```bash
+   # Xóa images cũ và build lại
+   docker-compose down
+   docker system prune -f
+   docker-compose up --build
+   ```
+
+2. **Lỗi kết nối database trong Docker:**
+   ```bash
+   # Kiểm tra logs
+   docker-compose logs mysql
+   docker-compose logs news-services
+   
+   # Restart services
+   docker-compose restart
+   ```
+
+3. **Lỗi port đã được sử dụng:**
+   - MySQL: port 3307 (Docker) vs 3306 (thông thường)
+   - Kiểm tra port: `netstat -tulpn | grep :3307`
+
+#### Với cách thông thường:
+
 1. **Lỗi kết nối database:**
    - Kiểm tra MySQL đã chạy chưa
    - Kiểm tra username/password trong `application.properties`
@@ -200,7 +268,7 @@ Sau khi đăng nhập, bạn sẽ có quyền truy cập vào trang Admin để 
 4. **Lỗi port đã được sử dụng:**
    - Backend: port 8080
    - Frontend: port 3000
-   - MySQL: port 3306
+   - MySQL: port 3306 (thông thường) / 3307 (Docker)
 
 ## 📝 Ghi chú
 

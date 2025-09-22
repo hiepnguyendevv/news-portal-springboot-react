@@ -82,7 +82,7 @@ public class SecurityConfig {
                                 .requestMatchers(HttpMethod.POST, "/api/news/import-data").permitAll()
                                 .requestMatchers(HttpMethod.POST, "/api/news/clear-all-data").permitAll()
 
-                                .requestMatchers(HttpMethod.POST, "/api/news/create").permitAll()
+                                .requestMatchers(HttpMethod.POST, "/api/news/create").hasRole("USER")
 
                                 .requestMatchers("/api/news/my-news/**").authenticated()
 
