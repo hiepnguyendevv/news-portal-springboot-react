@@ -11,6 +11,12 @@ import java.time.LocalDateTime;
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class News {
 
+    public enum Status {
+        DRAFT,
+        PENDING_REVIEW,
+        PUBLISHED
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -51,6 +57,13 @@ public class News {
 
     @Column(name = "featured")
     private Boolean featured = false; // Tin nổi bật
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 32)
+    private Status status = Status.DRAFT;
+
+    @Column(name = "review_note", length = 1000)
+    private String reviewNote;
 
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
@@ -114,6 +127,12 @@ public class News {
 
     public Boolean getFeatured() { return featured; }
     public void setFeatured(Boolean featured) { this.featured = featured; }
+
+    public Status getStatus() { return status; }
+    public void setStatus(Status status) { this.status = status; }
+
+    public String getReviewNote() { return reviewNote; }
+    public void setReviewNote(String reviewNote) { this.reviewNote = reviewNote; }
 
     public LocalDateTime getPublishedAt() { return publishedAt; }
     public void setPublishedAt(LocalDateTime publishedAt) { this.publishedAt = publishedAt; }

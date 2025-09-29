@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../components/AuthContext';
 import { newsAPI } from '../services/api';
+import ConfirmModal from '../components/ConfirmModal';
 
 const MyNews = () => {
   const [myNews, setMyNews] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all'); // all, published, draft
+  const [filter, setFilter] = useState('all'); // all, draft, pending, published
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedNewsId, setSelectedNewsId] = useState(null);
 
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -27,8 +30,9 @@ const MyNews = () => {
       let filteredNews = newsData;
       if (filter !== 'all') {
         filteredNews = newsData.filter(news => {
-          if (filter === 'published') return news.published;
-          if (filter === 'draft') return !news.published;
+          if (filter === 'published') return news.status === 'PUBLISHED' || news.published === true;
+          if (filter === 'draft') return news.status === 'DRAFT';
+          if (filter === 'pending') return news.status === 'PENDING_REVIEW';
           return true;
         });
       }
@@ -42,11 +46,21 @@ const MyNews = () => {
     }
   };
 
-  const getStatusBadge = (published) => {
-    if (published) {
-      return <span className="badge bg-success">Đã xuất bản</span>;
-    } else {
-      return <span className="badge bg-warning text-dark">Bản nháp</span>;
+  const getStatusBadge = (status, published) => {
+    const effective = status || (published ? 'PUBLISHED' : 'DRAFT');
+    if (effective === 'PUBLISHED') return <span className="badge bg-success">Đã xuất bản</span>;
+    if (effective === 'PENDING_REVIEW') return <span className="badge bg-info text-dark">Đang chờ duyệt</span>;
+    return <span className="badge bg-warning text-dark">Bản nháp</span>;
+  };
+
+  const handleSubmitForReview = async (newsId) => {
+    try {
+      await newsAPI.submitMyNews(newsId);
+      setSuccess('Đã gửi bài để duyệt');
+      // Refresh list
+      fetchMyNews();
+    } catch (err) {
+      setError('Lỗi khi gửi duyệt: ' + (err.response?.data?.error || err.message));
     }
   };
 
@@ -58,23 +72,38 @@ const MyNews = () => {
     navigate(`/my-news/edit/${newsId}`);
   };
 
-  const handleDeleteNews = async (newsId) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa bài viết này?')) {
-      return;
-    }
+  const handleDeleteNews = (newsId) => {
+    setSelectedNewsId(newsId);
+    setShowDeleteModal(true);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!selectedNewsId) return;
     try {
-      await newsAPI.deleteMyNews(newsId);
-      setMyNews(myNews.filter(news => news.id !== newsId));
+      await newsAPI.deleteMyNews(selectedNewsId);
+      setMyNews(myNews.filter(news => news.id !== selectedNewsId));
       setSuccess('Xóa bài viết thành công!');
     } catch (err) {
       setError('Lỗi khi xóa bài viết: ' + err.message);
+    } finally {
+      setShowDeleteModal(false);
+      setSelectedNewsId(null);
     }
   };
 
 
   return (
     <div className="container py-5">
+      <ConfirmModal
+        show={showDeleteModal}
+        title="Xóa bài viết"
+        message="Bạn có chắc chắn muốn xóa bài viết này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        confirmBtnClass="btn-danger"
+        onConfirm={handleConfirmDelete}
+        onClose={() => { setShowDeleteModal(false); setSelectedNewsId(null); }}
+      />
       <div className="row">
         <div className="col-12">
           <div className="d-flex justify-content-between align-items-center mb-4">
@@ -115,18 +144,26 @@ const MyNews = () => {
             </li>
             <li className="nav-item">
               <button 
-                className={`nav-link ${filter === 'published' ? 'active' : ''}`}
-                onClick={() => setFilter('published')}
+                className={`nav-link ${filter === 'draft' ? 'active' : ''}`}
+                onClick={() => setFilter('draft')}
               >
-                Đã xuất bản ({myNews.filter(n => n.published).length})
+                Bản nháp ({myNews.filter(n => (n.status === 'DRAFT') || (n.status == null && n.published === false)).length})
               </button>
             </li>
             <li className="nav-item">
               <button 
-                className={`nav-link ${filter === 'draft' ? 'active' : ''}`}
-                onClick={() => setFilter('draft')}
+                className={`nav-link ${filter === 'pending' ? 'active' : ''}`}
+                onClick={() => setFilter('pending')}
               >
-                Bản nháp ({myNews.filter(n => !n.published).length})
+                Đang chờ duyệt ({myNews.filter(n => n.status === 'PENDING_REVIEW').length})
+              </button>
+            </li>
+            <li className="nav-item">
+              <button 
+                className={`nav-link ${filter === 'published' ? 'active' : ''}`}
+                onClick={() => setFilter('published')}
+              >
+                Đã xuất bản ({myNews.filter(n => (n.status === 'PUBLISHED') || (n.status == null && n.published === true)).length})
               </button>
             </li>
           </ul>
@@ -158,7 +195,7 @@ const MyNews = () => {
                           <div className="d-flex align-items-center text-muted small">
                             <span className="me-3">
                               <i className="fas fa-calendar me-1"></i>
-                              {new Date(news.createdAt).toLocaleDateString('vi-VN')}
+                              {news.createdAt ? new Date(news.createdAt).toLocaleDateString('vi-VN') : ''}
                             </span>
                             <span className="me-3">
                               <i className="fas fa-eye me-1"></i>
@@ -172,30 +209,41 @@ const MyNews = () => {
                         </div>
                         <div className="col-md-4 text-md-end">
                           <div className="mb-2">
-                            {getStatusBadge(news.published)}
+                            {getStatusBadge(news.status, news.published)}
                           </div>
                           <div className="btn-group" role="group">
-                            <button 
-                              className="btn btn-outline-primary btn-sm"
-                              onClick={() => handleEditNews(news.id)}
-                              title="Chỉnh sửa"
-                            >
-                              <i className="fas fa-edit"></i>
-                            </button>
+                         
+                            {(news.status === 'DRAFT') && (
+                              <>
+                                <button 
+                                  className="btn btn-outline-primary btn-sm"
+                                  onClick={() => handleEditNews(news.id)}
+                                  title="Chỉnh sửa"
+                                >
+                                  <i className="fas fa-edit"></i>
+                                </button>
+                                <button 
+                                  className="btn btn-outline-success btn-sm"
+                                  onClick={() => handleSubmitForReview(news.id)}
+                                  title="Gửi duyệt"
+                                >
+                                  <i className="fas fa-paper-plane"></i>
+                                </button>
+                                <button 
+                                  className="btn btn-outline-danger btn-sm"
+                                  onClick={() => handleDeleteNews(news.id)}
+                                  title="Xóa"
+                                >
+                                  <i className="fas fa-trash"></i>
+                                </button>
+                              </>
+                            )}
                             <button 
                               className="btn btn-outline-info btn-sm"
                               onClick={() => window.open(`/${news.id}`, '_blank')}
                               title="Xem"
                             >
                               <i className="fas fa-eye"></i>
-                            </button>
-                            
-                            <button 
-                              className="btn btn-outline-danger btn-sm"
-                              onClick={() => handleDeleteNews(news.id)}
-                              title="Xóa"
-                            >
-                              <i className="fas fa-trash"></i>
                             </button>
                           </div>
                         </div>

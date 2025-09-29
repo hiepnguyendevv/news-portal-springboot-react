@@ -54,7 +54,9 @@ const CreateMyNews = () => {
     setError('');
     
     try {
+      console.log("formData", formData);
       const response = await newsAPI.createMyNews(formData);
+      console.log("response", response);
       setSuccess('Tạo bài viết thành công!');
       
       // Reset form
@@ -167,6 +169,7 @@ const CreateMyNews = () => {
                         onChange={handleChange}
                         placeholder="Nhập nội dung chi tiết bài viết..."
                         required
+                        style={{ minHeight: '200px' }}
                       />
                     </div>
                   </div>
@@ -221,8 +224,6 @@ const CreateMyNews = () => {
                       )}
                     </div>
 
-                 
-
                     {/* Submit Button */}
                     <div className="d-grid">
                       <button
@@ -255,4 +256,3 @@ const CreateMyNews = () => {
 };
 
 export default CreateMyNews;
-

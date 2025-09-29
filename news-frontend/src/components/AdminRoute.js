@@ -1,9 +1,9 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../components/AuthContext';
+import { useAuth } from './AuthContext';
 
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+const AdminRoute = ({ children }) => {
+  const { isAuthenticated, user, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -20,10 +20,20 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  if (user?.role !== 'ADMIN') {
+    return (
+      <div className="container py-5">
+        <div className="alert alert-danger">
+          <h4>Truy cập bị từ chối</h4>
+          <p>Bạn không có quyền truy cập trang quản trị này.</p>
+        </div>
+      </div>
+    );
+  }
+
   return children;
 };
 
-export default ProtectedRoute;
-
+export default AdminRoute;
 
 

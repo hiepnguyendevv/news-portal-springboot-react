@@ -10,6 +10,7 @@ import Search from './pages/Search';
 import Login from './pages/Login';
 import Signup from './pages/SignUp';
 import Profile from './pages/Profile';
+import UpdateProfile from './pages/UpdateProfile';
 import Admin from './pages/Admin';
 import CreateNews from './pages/admin/CreateNews';
 import NewsManagement from './pages/admin/NewsManagement';
@@ -21,12 +22,13 @@ import CreateCategory from './pages/admin/CreateCategory';
 import EditCategory from './pages/admin/EditCategory';
 import ProtectedRoute from './components/ProtectedRoute';
 import EditNews from './pages/admin/EditNews';
+import AdminRoute from './components/AdminRoute';
+import GuestRoute from './components/GuestRoute';
 
-// Chỉ import MyNews trước
 import MyNews from './pages/MyNews';
 import CreateMyNews from './pages/CreateMyNews';
 import EditMyNews from './pages/EditMyNews';
-
+import OAuth2Callback from './components/OAuth2Callback';
 
 function App() {
   return (
@@ -39,11 +41,26 @@ function App() {
             <Route path="/:slugWithId" element={<NewsDetail />} />
             <Route path="/category/:category" element={<Category />} />
             <Route path="/search" element={<Search />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
+
+            <Route path="/login" element={
+              <GuestRoute>
+                <Login />
+              </GuestRoute>
+            } />
+            <Route path="/oauth2/callback" element={<OAuth2Callback />} />
+            <Route path="/signup" element={
+              <GuestRoute>
+                <Signup />
+              </GuestRoute>
+            } />
             <Route path="/profile" element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile/edit" element={
+              <ProtectedRoute>
+                <UpdateProfile />
               </ProtectedRoute>
             } />
             
@@ -67,64 +84,64 @@ function App() {
             } />
 
             <Route path="/admin" element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <Admin />
-              </ProtectedRoute>
+              </AdminRoute>
             } />
             
             {/* Admin sub-routes */}
             <Route path="/admin/news" element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <NewsManagement />
-              </ProtectedRoute>
+              </AdminRoute>
             } />
             
             <Route path="/admin/news/create" element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <CreateNews />
-              </ProtectedRoute>
+              </AdminRoute>
             } />
             
             <Route path="/admin/news/edit/:id" element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <EditNews />
-              </ProtectedRoute>
+              </AdminRoute>
             } />
             
             <Route path="/admin/users" element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <UserManagement />
-              </ProtectedRoute>
+              </AdminRoute>
             } />
             
             <Route path="/admin/users/create" element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <CreateUser />
-              </ProtectedRoute>
+              </AdminRoute>
             } />
             
             <Route path="/admin/users/edit/:id" element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <EditUser />
-              </ProtectedRoute>
+              </AdminRoute>
             } />
             
             <Route path="/admin/categories" element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <CategoryManagement />
-              </ProtectedRoute>
+              </AdminRoute>
             } />
             
             <Route path="/admin/categories/create" element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <CreateCategory />
-              </ProtectedRoute>
+              </AdminRoute>
             } />
             
             <Route path="/admin/categories/edit/:id" element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <EditCategory />
-              </ProtectedRoute>
+              </AdminRoute>
             } />
           </Routes>
         </main>

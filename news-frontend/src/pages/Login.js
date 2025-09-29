@@ -17,6 +17,10 @@ const Login = () => {
   // Redirect to intended page after login
   const from = location.state?.from?.pathname || '/';
 
+  const handleGoogleLogin = () => {
+    // Redirect to Spring Boot OAuth2 endpoint
+    window.location.href = 'http://localhost:8080/oauth2/authorization/google';
+  };
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -129,6 +133,26 @@ const Login = () => {
                   )}
                 </button>
               </form>
+
+              <div className="text-center mb-3">
+                <div className="position-relative">
+                  <hr />
+                  <span className="position-absolute top-50 start-50 translate-middle bg-white px-3 text-muted">
+                    hoặc
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-outline-danger w-100 mb-3"
+                onClick={handleGoogleLogin}
+                disabled={loading}
+              >
+                <i className="fab fa-google me-2"></i>
+                Đăng nhập với Google
+              </button>
+              
 
               <div className="text-center">
                 <p className="text-muted mb-2">

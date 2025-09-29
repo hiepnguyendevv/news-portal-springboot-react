@@ -23,7 +23,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "http://localhost:3000")
-public class AuthController {
+public class  AuthController {
 
     @Autowired
     private AuthenticationManager authenticationManager;
@@ -56,6 +56,7 @@ public class AuthController {
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             return ResponseEntity.ok(JwtResponse.build(jwt, user));
+
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", "Đăng nhập thất bại: ");
@@ -107,6 +108,9 @@ public class AuthController {
             return ResponseEntity.badRequest().body(error);
         }
     }
+
+
+
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser() {
         try {
@@ -123,12 +127,73 @@ public class AuthController {
             response.put("fullName", user.getFullName());
             response.put("role", user.getRole().name());
             response.put("status", user.getStatus().name());
+            response.put("avatarUrl",user.getAvatarUrl());
 
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", "Không thể lấy thông tin user: " + e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+
+
+    @PutMapping("/me")
+    public ResponseEntity<?> updateCurrentUser(@RequestBody Map<String, Object> updateData) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+
+            User user = userRepository.findById(userPrincipal.getId())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            if (updateData.containsKey("email")) {
+                String newEmail = (String) updateData.get("email");
+                if (newEmail != null && !newEmail.equals(user.getEmail()) && userRepository.existsByEmail(newEmail)) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Email đã tồn tại"));
+                }
+                user.setEmail(newEmail);
+            }
+
+            // Update full name
+            if (updateData.containsKey("fullName")) {
+                user.setFullName((String) updateData.get("fullName"));
+            }
+
+            // Update phone
+            if (updateData.containsKey("phone")) {
+                user.setPhone((String) updateData.get("phone"));
+            }
+
+            if (updateData.containsKey("avatarUrl")) {
+                user.setAvatarUrl((String) updateData.get("avatarUrl"));
+            }
+
+            if (updateData.containsKey("password")) {
+                String password = (String) updateData.get("password");
+                if (password != null && !password.isEmpty()) {
+                    user.setPassword(passwordEncoder.encode(password));
+                }
+            }
+
+            User saved = userRepository.save(user);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", saved.getId());
+            response.put("username", saved.getUsername());
+            response.put("email", saved.getEmail());
+            response.put("fullName", saved.getFullName());
+            response.put("role", saved.getRole().name());
+            response.put("status", saved.getStatus().name());
+            response.put("phone", saved.getPhone());
+            response.put("avatarUrl", saved.getAvatarUrl());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Không thể cập nhật hồ sơ: " + e.getMessage());
             return ResponseEntity.badRequest().body(error);
         }
     }
@@ -141,5 +206,7 @@ public class AuthController {
         response.put("message", "Đăng xuất thành công!");
         return ResponseEntity.ok(response);
     }
+
+    
 
 }

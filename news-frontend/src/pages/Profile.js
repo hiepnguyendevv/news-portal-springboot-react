@@ -1,8 +1,12 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../components/AuthContext';
 
 const Profile = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  console.log(user)
+
 
   return (
     <div className="container py-5">
@@ -20,7 +24,18 @@ const Profile = () => {
                 <div className="col-md-4 text-center mb-3">
                   <div className="avatar-placeholder bg-primary text-white rounded-circle mx-auto d-flex align-items-center justify-content-center" 
                        style={{width: '120px', height: '120px', fontSize: '48px'}}>
-                    <i className="fas fa-user"></i>
+                      <img 
+                        src={user?.avatarUrl
+                        }
+
+                        className="card-img-top rounded-circle"
+                        // alt={news.title}
+                        style={{ width: '100%',height: '100%', objectFit: 'cover' }}
+                        onError={(e) => {
+                          e.target.src = 'https://via.placeholder.com/800x450?text=No+Image';
+                        }}
+                      />
+                    {/* <i className="fas fa-user"></i> */}
                   </div>
                 </div>
                 <div className="col-md-8">
@@ -50,7 +65,7 @@ const Profile = () => {
                   </table>
                   
                   <div className="mt-3">
-                    <button className="btn btn-primary me-2">
+                    <button className="btn btn-primary me-2" onClick={() => navigate('/profile/edit')}>
                       <i className="fas fa-edit me-1"></i>
                       Chỉnh sửa
                     </button>

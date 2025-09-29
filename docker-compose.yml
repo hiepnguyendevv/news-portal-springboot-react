@@ -18,7 +18,22 @@ services:
       retries: 10
       interval: 10s
       start_period: 30s
-    
+
+  redis:
+    image: redis:7-alpine
+    container_name: news-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      - news-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   
   #Backend
   news-services:
@@ -30,6 +45,8 @@ services:
       - "8080:8080"
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     environment:
       - SPRING_PROFILES_ACTIVE=docker

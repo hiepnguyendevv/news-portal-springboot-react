@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { newsAPI } from '../../services/api';
 import CategoryTable from '../../components/CategoryTable';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const CategoryManagement = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedCategoryId, setSelectedCategoryId] = useState(null);
 
   const navigate = useNavigate();
 
@@ -36,17 +39,22 @@ const CategoryManagement = () => {
     navigate(`/admin/categories/edit/${categoryId}`);
   };
 
-  const handleDeleteCategory = async (categoryId) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa danh mục này?')) {
-      return;
-    }
+  const handleDeleteCategory = (categoryId) => {
+    setSelectedCategoryId(categoryId);
+    setShowDeleteModal(true);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!selectedCategoryId) return;
     try {
-      await newsAPI.deleteCategory(categoryId);
-      setCategories(categories.filter(category => category.id !== categoryId));
+      await newsAPI.deleteCategory(selectedCategoryId);
+      setCategories(categories.filter(category => category.id !== selectedCategoryId));
       setSuccess('Xóa danh mục thành công!');
     } catch (err) {
       setError('Lỗi khi xóa danh mục: ' + err.message);
+    } finally {
+      setShowDeleteModal(false);
+      setSelectedCategoryId(null);
     }
   };
 
@@ -55,6 +63,16 @@ const CategoryManagement = () => {
 
   return (
     <div className="container py-5">
+      <ConfirmModal
+        show={showDeleteModal}
+        title="Xóa danh mục"
+        message="Bạn có chắc chắn muốn xóa danh mục này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        confirmBtnClass="btn-danger"
+        onConfirm={handleConfirmDelete}
+        onClose={() => { setShowDeleteModal(false); setSelectedCategoryId(null); }}
+      />
       <div className="row">
         <div className="col-12">
           {/* Header */}

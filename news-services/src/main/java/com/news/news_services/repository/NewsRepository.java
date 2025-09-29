@@ -35,6 +35,16 @@ public interface NewsRepository extends JpaRepository<News, Long> {
 
     long countByCategoryId(Long categoryId);
 
+    @Modifying
+    @Query("UPDATE News n SET n.viewCount = n.viewCount + 1 WHERE n.id = :id")
+            int incrementViewCount(@Param("id") Long id);
+
     // Lấy tin tức của user theo authorId
     List<News> findByAuthorIdOrderByCreatedAtDesc(Long authorId);
+
+    List<News> findByPublishedTrueOrderByViewCountDesc();
+
+    List<News> findByPublishedTrueOrderByViewCountAsc();
+
+    List<News> findAllByOrderByCreatedAtDesc();
 }

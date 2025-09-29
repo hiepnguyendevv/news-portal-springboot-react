@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { newsAPI } from '../../services/api';
 import UserTable from '../../components/UserTable';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
@@ -9,6 +10,8 @@ const UserManagement = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [filter, setFilter] = useState('all');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState(null);
 
   const navigate = useNavigate();
 
@@ -56,17 +59,24 @@ const UserManagement = () => {
     navigate(`/admin/users/edit/${userId}`);
   };
 
-  const handleDeleteUser = async (userId) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa người dùng này?')) {
-      return;
-    }
+  const handleDeleteUser = (userId) => {
+    setSelectedUserId(userId);
+    setShowDeleteModal(true);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!selectedUserId) return;
     try {
-      await newsAPI.deleteUser(userId);
-      setUsers(users.filter(user => user.id !== userId));
+      console.log("id ",selectedUserId);
+
+      await newsAPI.deleteUser(selectedUserId);   
+      setUsers(users.filter(user => user.id !== selectedUserId));
       setSuccess('Xóa người dùng thành công!');
     } catch (err) {
       setError('Lỗi khi xóa người dùng: ' + err.message);
+    } finally {
+      setShowDeleteModal(false);
+      setSelectedUserId(null);
     }
   };
 
@@ -84,6 +94,16 @@ const UserManagement = () => {
 
   return (
     <div className="container py-5">
+      <ConfirmModal
+        show={showDeleteModal}
+        title="Xóa người dùng"
+        message="Bạn có chắc chắn muốn xóa người dùng này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        confirmBtnClass="btn-danger"
+        onConfirm={handleConfirmDelete}
+        onClose={() => { setShowDeleteModal(false); setSelectedUserId(null); }}
+      />
       <div className="row">
         <div className="col-12">
           {/* Header */}

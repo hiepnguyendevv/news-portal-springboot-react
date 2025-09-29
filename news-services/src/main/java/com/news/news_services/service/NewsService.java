@@ -12,6 +12,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.ResponseEntity;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import java.time.Duration;
+
 import org.springframework.web.bind.annotation.*;
 
 import com.news.news_services.service.HelperService;
@@ -40,6 +44,9 @@ public class NewsService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private StringRedisTemplate redis;
 
     public List<News> getAllNews() {
         return newsRepository.findAll();
@@ -71,6 +78,23 @@ public class NewsService {
         return newsRepository.searchByKeyword(keyword);
     }
 
+    @Transactional
+    public Long incrementViewCount(Long id){
+        int newCnt = newsRepository.incrementViewCount(id);
+        if(newCnt == 0) return null;
+
+        return newsRepository.findById(id).map(News::getViewCount).orElse(null);
+    }
+
+    @Transactional
+    public Long  incrementViewCountWithCoolDown(Long newsId, String visitorKey, Duration ttl){
+        String key = "view:" + newsId + ":" + visitorKey;
+        Boolean firstTime = redis.opsForValue().setIfAbsent(key,"1",ttl);
+        if(Boolean.TRUE.equals(firstTime)){
+            newsRepository.incrementViewCount(newsId);
+        }
+        return newsRepository.findById(newsId).map(News::getViewCount).orElse(null);
+    }
     // Xóa tất cả tin tức
     public Map<String, Object> clearAllNews() {
         Map<String, Object> response = new HashMap<>();
@@ -254,7 +278,7 @@ public class NewsService {
     private void createSampleNews(String title, String summary, String content,
                                   Category category, User author) {
         News news = new News();
-        String slugName = helperService.toSlug(title);
+            String slugName = helperService.toSlug(title);
         int number = ThreadLocalRandom.current().nextInt(1, 2001); 
         String numImg = String.valueOf(number);
         news.setTitle(title);
@@ -266,6 +290,7 @@ public class NewsService {
         news.setSlug(slugName);
         news.setPublished(true);
         news.setFeatured(false);
+        news.setStatus(News.Status.PUBLISHED);
         news.setCreatedAt(LocalDateTime.now());
         news.setUpdatedAt(LocalDateTime.now());
         newsRepository.save(news);

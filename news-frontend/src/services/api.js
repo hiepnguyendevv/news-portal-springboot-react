@@ -6,6 +6,7 @@ const api = axios.create({
    headers: {
        "Content-Type": "application/json",
    },
+   withCredentials: true, // Quan trọng: gửi cookie
 });
 
 // Request interceptor để thêm JWT token
@@ -36,7 +37,6 @@ api.interceptors.response.use(
 
 export const newsAPI = {
    // News APIs
-   getAllNews: async () => api.get("/news"),
    getNewsById: async (id) => api.get(`/news/${id}`), 
    getPublishedNews: async () => api.get("/news/published"),
    importSampleData: async () => api.post("/news/import-data"),
@@ -47,16 +47,23 @@ export const newsAPI = {
    searchNews: async (keyword) => api.get(`/news/search?keyword=${encodeURIComponent(keyword)}`),
    
    // Admin News APIs
-   createNews: async (newsData) => api.post("/news/create", newsData),
-   updateNews: async (id, newsData) => api.put(`/news/${id}`, newsData),
-   deleteNews: async (id) => api.delete(`/news/${id}`),
-   updateNewsStatus: async (id, statusData) => api.put(`/news/${id}/status`, statusData),
+   getAllNews: async () => api.get("/admin/news"),
+   createNews: async (newsData) => api.post("/admin/news", newsData),
+   updateNews: async (id, newsData) => api.put(`/admin/news/${id}`, newsData),
+   deleteNews: async (id) => api.delete(`/admin/news/${id}`),
+   updateNewsStatus: async (id, statusData) => api.put(`/admin/news/${id}/status`, statusData),
 
    // My News APIs
    getMyNews: async () => api.get("/news/my-news"),
    createMyNews: async (newsData) => api.post("/news/my-news", newsData),
    updateMyNews: async (id, newsData) => api.put(`/news/my-news/${id}`, newsData),
    deleteMyNews: async (id) => api.delete(`/news/my-news/${id}`),
+  submitMyNews: async (id) => api.post(`/news/my-news/${id}/submit`),
+ 
+  // Notifications APIs
+  getMyNotifications: async () => api.get('/notifications'),
+  getUnreadCount: async () => api.get('/notifications/unread-count'),
+  markNotificationAsRead: async (id) => api.post(`/notifications/${id}/read`),
   
   // Category APIs
   getAllCategory: async () => api.get("/category"),
@@ -65,9 +72,9 @@ export const newsAPI = {
   getCategoryBySlug: async (slug) => api.get(`/category/slug/${slug}`),
   getSubcategoriesByParent: async (parentSlug) => api.get(`/category/subcategories/${parentSlug}`),   
    // Admin Category APIs
-   createCategory: async (categoryData) => api.post("/category", categoryData),
-   updateCategory: async (id, categoryData) => api.put(`/category/${id}`, categoryData),
-   deleteCategory: async (id) => api.delete(`/category/${id}`),
+   createCategory: async (categoryData) => api.post("/admin/category", categoryData),
+   updateCategory: async (id, categoryData) => api.put(`/admin/category/${id}`, categoryData),
+   deleteCategory: async (id) => api.delete(`/admin/category/${id}`),
    countNewsByCategory: async (categoryId) => api.get(`/category/${categoryId}/count`),
    
   // Admin User APIs
@@ -82,8 +89,18 @@ export const newsAPI = {
    login: async (credentials) => api.post("/auth/signin", credentials),
    signup: async (userData) => api.post("/auth/signup", userData),
    getCurrentUser: async () => api.get("/auth/me"), 
-
    logout: async () => api.post("/auth/logout"),
+  // Profile APIs (current user)
+  updateMyProfile: async (payload) => api.put('/auth/me', payload),
+
+  //google login APIs
+  googleLogin: async () => api.get('/oauth2/callback'),
+
+  incrementViewCount: async (id) => api.post(`/news/${id}/view`),
+
+  //
+  getNewsByViewCountDesc: async () => api.get('/news/view-desc'),
+  getNewsByViewCountAsc: async () => api.get('/news/view-asc'),
 }; 
 
 export default api;

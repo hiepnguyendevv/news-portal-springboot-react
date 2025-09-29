@@ -11,6 +11,11 @@ public class HelperService {
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
     public String toSlug(String input) {
+        // Handle null or empty input
+        if (input == null || input.trim().isEmpty()) {
+            return "";
+        }
+
         String noWhitespace = WHITESPACE.matcher(input).replaceAll("-");
         String normalized = Normalizer.normalize(noWhitespace, Normalizer.Form.NFD);
         String slug = NONLATIN.matcher(normalized).replaceAll("");

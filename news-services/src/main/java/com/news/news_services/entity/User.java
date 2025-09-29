@@ -28,8 +28,8 @@ public class User {
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
-    @NotBlank(message = "Password không được để trống")
-    @Size(min = 6, message = "Password phải ít nhất 6 ký tự")
+//    @NotBlank(message = "Password không được để trống")
+//    @Size(min = 6, message = "Password phải ít nhất 6 ký tự")
     @Column(nullable = false, length = 255)
     private String password;
 
@@ -77,8 +77,6 @@ public class User {
     public enum UserStatus {
         ACTIVE,     // Hoạt động
         INACTIVE,   // Không hoạt động
-        BANNED,     // Bị cấm
-        PENDING     // Chờ xác thực
     }
 
     public User(){

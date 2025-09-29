@@ -15,6 +15,7 @@ const NewsDetail = () => {
   const [news, setNews] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const incrementedRef = React.useRef(false);
 
   useEffect(() => {
     fetchNewsDetail();
@@ -26,6 +27,11 @@ const NewsDetail = () => {
       const response = await newsAPI.getNewsById(id);
       setNews(response.data);
       setError(null);
+
+      if (!incrementedRef.current) {
+        incrementedRef.current = true;
+        newsAPI.incrementViewCount(id).catch(() => {});
+      }
     } catch (err) {
       setError('Không thể tải chi tiết tin tức.');
       console.error('Error fetching news detail:', err);

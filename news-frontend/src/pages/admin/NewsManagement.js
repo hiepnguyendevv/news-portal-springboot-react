@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../components/AuthContext';
 import { newsAPI } from '../../services/api';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const NewsManagement = () => {
   const [news, setNews] = useState([]);
@@ -9,9 +10,14 @@ const NewsManagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [filter, setFilter] = useState('all'); // all, published, draft, featured
+  const [filter, setFilter] = useState('all'); // all, published, draft, pending, featured
   const [categoryFilter, setCategoryFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectNote, setRejectNote] = useState('');
+  const [selectedNewsId, setSelectedNewsId] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false); 
+  const [sortBy, setSortBy] = useState('date');
 
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -19,19 +25,31 @@ const NewsManagement = () => {
   useEffect(() => {
     fetchNews();
     fetchCategories();
-  }, [filter, categoryFilter]);
+  }, [filter, categoryFilter,sortBy]);
 
   const fetchNews = async () => {
     try {
       setLoading(true);
-      const response = await newsAPI.getAllNews();
-      let filteredNews = response.data;
+      let response;
+   // Nếu sort theo view count, chỉ lấy tin published và không filter thêm
+   if (sortBy === 'desc') {
+    response = await newsAPI.getNewsByViewCountDesc();
+  } else if (sortBy === 'asc') {
+    response = await newsAPI.getNewsByViewCountAsc();
+  } else {
+    response = await newsAPI.getAllNews();
+  }
+  
+  let filteredNews = response.data;
+
 
       // Filter by status
       if (filter === 'published') {
-        filteredNews = filteredNews.filter(item => item.published === true);
+        filteredNews = filteredNews.filter(item => (item.status === 'PUBLISHED') || (item.status == null && item.published === true));
       } else if (filter === 'draft') {
-        filteredNews = filteredNews.filter(item => item.published === false);
+        filteredNews = filteredNews.filter(item => (item.status === 'DRAFT') || (item.status == null && item.published === false));
+      } else if (filter === 'pending') {
+        filteredNews = filteredNews.filter(item => item.status === 'PENDING_REVIEW');
       } else if (filter === 'featured') {
         filteredNews = filteredNews.filter(item => item.featured === true);
       }
@@ -69,30 +87,28 @@ const NewsManagement = () => {
     }
   };
 
-  const handleDeleteNews = async (newsId) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa tin tức này?')) {
-      return;
-    }
+  const openDeleteNews = (newsId) => {
+    setSelectedNewsId(newsId);
+    setShowDeleteModal(true);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!selectedNewsId) return;
     try {
-      // Gọi API xóa tin tức
-      await newsAPI.deleteNews(newsId);
-      setNews(news.filter(item => item.id !== newsId));
+      await newsAPI.deleteNews(selectedNewsId);
+      setNews(news.filter(item => item.id !== selectedNewsId));
       setSuccess('Xóa tin tức thành công!');
     } catch (err) {
       setError('Lỗi khi xóa tin tức: ' + err.message);
+    } finally {
+      setShowDeleteModal(false);
+      setSelectedNewsId(null);
     }
   };
 
   const handleTogglePublish = async (newsId, currentStatus) => {
     try {
-      // Gọi API cập nhật trạng thái publish
-      // Debug dữ liệu trước khi gửi API
- console.log('=== DEBUG PUBLISHED TOGGLE ===');
- console.log('newsId:', newsId);
- console.log('currentStatus:', currentStatus);
- console.log('newStatus sẽ là:', !currentStatus);
- console.log('Dữ liệu gửi đi:', { published: !currentStatus });
+
  
 
       await newsAPI.updateNewsStatus(newsId, { published: !currentStatus });
@@ -107,13 +123,7 @@ const NewsManagement = () => {
 
   const handleToggleFeatured = async (newsId, currentStatus) => {
     try {
-      // Gọi API cập nhật trạng thái featured
- // Debug dữ liệu trước khi gửi API
- console.log('=== DEBUG FEATURED TOGGLE ===');
- console.log('newsId:', newsId);
- console.log('currentStatus:', currentStatus);
- console.log('newStatus sẽ là:', !currentStatus);
- console.log('Dữ liệu gửi đi:', { featured: !currentStatus });
+
  
       await newsAPI.updateNewsStatus(newsId, { featured: !currentStatus });
       setNews(news.map(item => 
@@ -125,18 +135,93 @@ const NewsManagement = () => {
     }
   };
 
-  const getStatusBadge = (published, featured) => {
+  const getStatusBadge = (status, published, featured) => {
     if (featured) {
       return <span className="badge bg-warning text-dark">Nổi bật</span>;
     }
-    if (published) {
+    const effective = status || (published ? 'PUBLISHED' : 'DRAFT');
+    if (effective === 'PUBLISHED') {
       return <span className="badge bg-success">Đã xuất bản</span>;
+    }
+    if (effective === 'PENDING_REVIEW') {
+      return <span className="badge bg-info text-dark">Đang chờ duyệt</span>;
     }
     return <span className="badge bg-secondary">Bản nháp</span>;
   };
 
+  const handleReject = (newsId) => {
+    setSelectedNewsId(newsId);
+    setRejectNote('');
+    setShowRejectModal(true);
+  };
+
+  const handleCloseReject = () => {
+    setShowRejectModal(false);
+    setRejectNote('');
+    setSelectedNewsId(null);
+  };
+
+  const handleConfirmReject = async () => {
+    if (!selectedNewsId) {
+      return;
+    }
+    try {
+      await newsAPI.updateNewsStatus(selectedNewsId, { published: false, reviewNote: rejectNote || '' });
+      setNews(news.map(item => 
+        item.id === selectedNewsId ? { ...item, published: false, status: 'DRAFT', reviewNote: rejectNote || '' } : item
+      ));
+      setSuccess('Đã từ chối bài viết và chuyển về bản nháp');
+      handleCloseReject();
+    } catch (err) {
+      setError('Lỗi khi từ chối bài viết: ' + err.message);
+    }
+  };
+
   return (
     <div className="container py-5">
+      <ConfirmModal
+        show={showDeleteModal}
+        title="Xóa tin tức"
+        message="Bạn có chắc chắn muốn xóa tin tức này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        confirmBtnClass="btn-danger"
+        onConfirm={handleConfirmDelete}
+        onClose={() => { setShowDeleteModal(false); setSelectedNewsId(null); }}
+      />
+      {showRejectModal && (
+        <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  <i className="fas fa-times-circle me-2 text-danger"></i>
+                  Từ chối bài viết
+                </h5>
+                <button type="button" className="btn-close" aria-label="Close" onClick={handleCloseReject}></button>
+              </div>
+              <div className="modal-body">
+                <label htmlFor="rejectNote" className="form-label">Lý do từ chối (tùy chọn)</label>
+                <textarea
+                  id="rejectNote"
+                  className="form-control"
+                  rows="4"
+                  placeholder="Nhập lý do..."
+                  value={rejectNote}
+                  onChange={(e) => setRejectNote(e.target.value)}
+                ></textarea>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={handleCloseReject}>Hủy</button>
+                <button type="button" className="btn btn-danger" onClick={handleConfirmReject}>
+                  <i className="fas fa-times me-1"></i>
+                  Từ chối
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="row">
         <div className="col-12">
           <div className="d-flex justify-content-between align-items-center mb-4">
@@ -210,6 +295,14 @@ const NewsManagement = () => {
                     </li>
                     <li className="nav-item">
                       <button 
+                        className={`nav-link ${filter === 'pending' ? 'active' : ''}`}
+                        onClick={() => setFilter('pending')}
+                      >
+                        Đang chờ duyệt
+                      </button>
+                    </li>
+                    <li className="nav-item">
+                      <button 
                         className={`nav-link ${filter === 'featured' ? 'active' : ''}`}
                         onClick={() => setFilter('featured')}
                       >
@@ -235,7 +328,19 @@ const NewsManagement = () => {
                       </option>
                     ))}
                   </select>
+                  <div className="mt-3">
+                    <label htmlFor="sortBy" className="form-label">Sắp xếp theo</label>
+                    <select  className='form-select'
+                    value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                      <option value="date">Mới nhất</option>
+                      <option value="desc">Xem nhiều nhất</option>
+                      <option value="asc">Xem ít nhất</option>
+                    </select>
                 </div>
+                  
+                </div>
+
+                
 
                 {/* Search */}
                 <div className="col-md-6">
@@ -260,6 +365,7 @@ const NewsManagement = () => {
               </div>
             </div>
           </div>
+          
 
           {/* News Table */}
           <div className="card">
@@ -320,7 +426,7 @@ const NewsManagement = () => {
                             </span>
                           </td>
                           <td>{item.author?.fullName || item.author?.username}</td>
-                          <td>{getStatusBadge(item.published, item.featured)}</td>
+                          <td>{getStatusBadge(item.status, item.published, item.featured)}</td>
                           <td>
                             <i className="fas fa-eye me-1"></i>
                             {item.viewCount || 0}
@@ -343,6 +449,16 @@ const NewsManagement = () => {
                               >
                                 <i className={`fas fa-${item.published ? 'eye-slash' : 'eye'}`}></i>
                               </button>
+
+                              {item.status === 'PENDING_REVIEW' && (
+                                <button
+                                  className="btn btn-outline-danger"
+                                  onClick={() => handleReject(item.id)}
+                                  title="Từ chối"
+                                >
+                                  <i className="fas fa-times"></i>
+                                </button>
+                              )}
                               
                               <button
                                 className={`btn btn-outline-${item.featured ? 'secondary' : 'warning'}`}
@@ -354,7 +470,7 @@ const NewsManagement = () => {
                               
                               <button
                                 className="btn btn-outline-danger"
-                                onClick={() => handleDeleteNews(item.id)}
+                                onClick={() => openDeleteNews(item.id)}
                                 title="Xóa"
                               >
                                 <i className="fas fa-trash"></i>

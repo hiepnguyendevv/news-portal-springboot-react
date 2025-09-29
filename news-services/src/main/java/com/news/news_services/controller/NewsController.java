@@ -7,13 +7,18 @@ import com.news.news_services.repository.CategoryRepository;
 import com.news.news_services.repository.NewsRepository;
 import com.news.news_services.repository.UserRepository;
 import com.news.news_services.security.UserPrincipal;
+import com.news.news_services.service.HelperService;
 import com.news.news_services.service.NewsService;
+import com.news.news_services.service.NotificationService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 @RestController
@@ -34,17 +39,18 @@ public class NewsController {
     @Autowired
     private CategoryRepository categoryRepository;
 
+    @Autowired
+    private HelperService helperService;
+
+    @Autowired
+    private NotificationService notificationService;
     // Test kết nối database
     @GetMapping("/test")
     public String testConnection() {
         return newsService.testConnection();
     }
 
-    // Lấy tất cả tin tức
-    @GetMapping
-    public List<News> getAllNews() {
-        return newsService.getAllNews();
-    }
+
 
     // Lấy tin tức theo ID
     @GetMapping("/{id}")
@@ -70,125 +76,21 @@ public class NewsController {
         return newsService.getNewsByCategorySlug(slug);
     }
 
+    //Lấy tin tức sắp xếp theo view count
+    @GetMapping("/view-desc")
+    public List<News> getNewsSortByViewDesc(){
+        return newsRepository.findByPublishedTrueOrderByViewCountDesc();
+    }
+
+    @GetMapping("/view-asc")
+    public List<News> getNewsSortByViewAsc(){
+        return newsRepository.findByPublishedTrueOrderByViewCountAsc();
+    }
     // Tìm kiếm tin tức theo từ khóa
     @GetMapping("/search")
     public List<News> searchNews(@RequestParam String keyword) {
         return newsService.searchNews(keyword);
     }
-
-    @PostMapping("/create")
-    public ResponseEntity<?> createNews(@RequestBody Map<String, Object> newsData) {
-
-        try {
-            //Tạo News entity mới
-            News news = new News();
-            news.setTitle((String) newsData.get("title"));
-            news.setContent((String) newsData.get("content"));
-            news.setSummary((String) newsData.get("summary"));
-            news.setImageUrl((String) newsData.get("imageUrl"));
-            news.setPublished((Boolean) newsData.get("published"));
-            news.setFeatured((Boolean) newsData.get("featured"));
-
-            // 🔧 Convert authorId thành User object
-            Integer authorId = Integer.valueOf(newsData.get("authorId").toString());
-            if (authorId != null) {
-                User author = userRepository.findById(authorId.longValue())
-                        .orElseThrow(() -> new RuntimeException("User not found with id: " + authorId));
-                news.setAuthor(author);
-            }
-
-            // 🔧 Convert categoryId thành Category object
-            Integer categoryId = Integer.valueOf(newsData.get("categoryId").toString());
-            if (categoryId != null) {
-                Category category = categoryRepository.findById(categoryId.longValue())
-                        .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
-                news.setCategory(category);
-            }
-
-            News savedNews = newsRepository.save(news);
-            return ResponseEntity.ok(savedNews);
-
-        } catch (Exception e) {
-            System.err.println("Error creating news: " + e.getMessage());
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
-        }
-    }
-
-    @DeleteMapping("/{id}")
-    String deleteNews(@PathVariable Long id) {
-
-//        Long categoryId = Long.parseLong(id);
-
-        if(!newsRepository.existsById(id)){
-            throw new RuntimeException("News not found with id: " + id);
-        }
-        System.out.println(id);
-        newsRepository.deleteById(id);
-        return "News deleted successfully";
-    }
-
-
-    //UpdateStatus
-    @PutMapping("/{id}/status")
-    public ResponseEntity<?> updateNewsStatus(@PathVariable Long id, @RequestBody Map<String, Object> statusData) {
-        try {
-            News news = newsRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("News not found with id: " + id));
-
-            // Cập nhật published status nếu có
-            if (statusData.containsKey("published")) {
-                Boolean published = (Boolean) statusData.get("published");
-                news.setPublished(published);
-            }
-
-            // Cập nhật featured status nếu có
-            if (statusData.containsKey("featured")) {
-                Boolean featured = (Boolean) statusData.get("featured");
-                news.setFeatured(featured);
-            }
-
-            News updatedNews = newsRepository.save(news);
-            return ResponseEntity.ok(updatedNews);
-
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Lỗi khi cập nhật trạng thái: " + e.getMessage()));
-        }
-    }
-
-    // Thêm endpoint cập nhật toàn bộ tin tức
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateNews(@PathVariable Long id, @RequestBody Map<String, Object> newsData) {
-        try {
-            News news = newsRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("News not found with id: " + id));
-
-            // Cập nhật các trường cơ bản
-                news.setTitle((String) newsData.get("title"));
-                news.setContent((String) newsData.get("content"));
-                news.setSummary((String) newsData.get("summary"));
-                news.setImageUrl((String) newsData.get("imageUrl"));
-                news.setPublished((Boolean) newsData.get("published"));
-                news.setFeatured((Boolean) newsData.get("featured"));
-
-
-            // Cập nhật category nếu có
-            if (newsData.containsKey("categoryId")) {
-                Integer categoryId = Integer.valueOf(newsData.get("categoryId").toString());
-                Category category = categoryRepository.findById(categoryId.longValue())
-                        .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
-                news.setCategory(category);
-            }
-
-            News updatedNews = newsRepository.save(news);
-            return ResponseEntity.ok(updatedNews);
-
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Lỗi khi cập nhật tin tức: " + e.getMessage()));
-        }
-    }
-
 
 
     // Import dữ liệu mẫu
@@ -220,6 +122,33 @@ public class NewsController {
         }
     }
 
+    // Tác giả gửi bài để duyệt
+    @PostMapping("/my-news/{id}/submit")
+    public ResponseEntity<?> submitMyNewsForReview(@PathVariable Long id) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+
+            News news = newsRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("News not found with id: " + id));
+
+            if (!news.getAuthor().getId().equals(userPrincipal.getId())) {
+                return ResponseEntity.status(403)
+                        .body(Map.of("error", "Bạn không có quyền gửi bài này"));
+            }
+
+            news.setStatus(News.Status.PENDING_REVIEW);
+            news.setPublished(false);
+            news.setFeatured(false);
+
+            News updated = newsRepository.save(news);
+            return ResponseEntity.ok(updated);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Lỗi khi gửi duyệt: " + e.getMessage()));
+        }
+    }
+
     // Tạo tin tức mới (cho user)
     @PostMapping("/my-news")
     public ResponseEntity<?> createMyNews(@RequestBody Map<String, Object> newsData) {
@@ -232,16 +161,16 @@ public class NewsController {
             news.setTitle((String) newsData.get("title"));
             news.setContent((String) newsData.get("content"));
             news.setSummary((String) newsData.get("summary"));
+            news.setSlug(helperService.toSlug((String) newsData.get("title"))); 
             news.setImageUrl((String) newsData.get("imageUrl"));
-            news.setPublished((Boolean) newsData.get("published"));
-            news.setFeatured((Boolean) newsData.get("featured"));
+            news.setPublished(false);
+            news.setFeatured(false);
+            news.setStatus(News.Status.DRAFT);
 
-            // Set author từ user hiện tại
             User author = userRepository.findById(userPrincipal.getId())
                     .orElseThrow(() -> new RuntimeException("User not found"));
             news.setAuthor(author);
 
-            // Set category nếu có
             if (newsData.containsKey("categoryId")) {
                 Integer categoryId = Integer.valueOf(newsData.get("categoryId").toString());
                 Category category = categoryRepository.findById(categoryId.longValue())
@@ -280,8 +209,10 @@ public class NewsController {
             news.setContent((String) newsData.get("content"));
             news.setSummary((String) newsData.get("summary"));
             news.setImageUrl((String) newsData.get("imageUrl"));
-            news.setPublished((Boolean) newsData.get("published"));
-            news.setFeatured((Boolean) newsData.get("featured"));
+            // Tác giả cập nhật vẫn luôn giữ trạng thái nháp, không nổi bật
+            news.setPublished(false);
+            news.setFeatured(false);
+            news.setStatus(News.Status.DRAFT);
 
             // Cập nhật category nếu có
             if (newsData.containsKey("categoryId")) {
@@ -324,4 +255,27 @@ public class NewsController {
                 .body(Map.of("error", "Lỗi khi xóa tin tức: " + e.getMessage()));
         }
     }
+
+    //Đếm view
+    @PostMapping("/{id}/view")
+    public ResponseEntity<Map<String, Object>> incrementView(HttpServletRequest request, @PathVariable Long id){
+
+        String ua = request.getHeader("User-Agent");
+        String ip = request.getHeader("X-Forwared-For");
+
+        if(ip == null || ip.isBlank()) ip = request.getRemoteAddr();
+        String visitorKey;
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof UserPrincipal up) {
+            visitorKey = "u:" + up.getId();
+        } else {
+            String raw = (ip == null ? "" : ip) + "|" + (ua == null ? "" : ua);
+            visitorKey = "g:" + Integer.toHexString(raw.hashCode());
+        }
+
+        Long newCount = newsService.incrementViewCountWithCoolDown(id, visitorKey, Duration.ofMinutes(3));
+        if (newCount == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(Map.of("viewCount", newCount));
+    }
+
 }

@@ -10,16 +10,18 @@ public class JwtResponse {
     private String email;
     private String fullName;
     private String role;
+    private String status;
 
     public JwtResponse() {}
 
-    public JwtResponse(String accessToken, Long id, String username, String email, String fullName, String role) {
+    public JwtResponse(String accessToken, Long id, String username, String email, String fullName, String role,String status) {
         this.token = accessToken;
         this.id = id;
         this.username = username;
         this.email = email;
         this.fullName = fullName;
         this.role = role;
+        this.status = status;
     }
 
     public static JwtResponse build(String token, User user) {
@@ -29,7 +31,8 @@ public class JwtResponse {
                 user.getUsername(),
                 user.getEmail(),
                 user.getFullName(),
-                user.getRole().name()
+                user.getRole().name(),
+                user.getStatus().name()
         );
     }
 
@@ -55,6 +58,14 @@ public class JwtResponse {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public String getUsername() {

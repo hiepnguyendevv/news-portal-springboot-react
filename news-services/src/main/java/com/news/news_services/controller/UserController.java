@@ -1,6 +1,7 @@
 package com.news.news_services.controller;
 
 import com.news.news_services.entity.User;
+import com.news.news_services.repository.NotificationRepository;
 import com.news.news_services.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +22,9 @@ public class UserController {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
 
     // Lấy tất cả users
     @GetMapping
@@ -188,6 +192,8 @@ public class UserController {
                 return ResponseEntity.notFound().build();
             }
 
+
+            notificationRepository.deleteByRecipientId(id);
             userRepository.deleteById(id);
             System.out.println("✅ User deleted: " + id);
             return ResponseEntity.ok()

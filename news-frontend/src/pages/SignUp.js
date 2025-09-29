@@ -19,9 +19,11 @@ const Signup = () => {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
+    const sanitizedValue = name === 'username' ? value.replace(/\s/g, '') : value;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: sanitizedValue
     });
   };
 
@@ -97,7 +99,9 @@ const Signup = () => {
                       required
                       placeholder="Nhập tên đăng nhập"
                       disabled={loading}
-                      minLength="3"
+                      // minLength="3"
+                      pattern="^\S+$"
+                      title="Tên đăng nhập không được chứa khoảng trắng"
                     />
                   </div>
 

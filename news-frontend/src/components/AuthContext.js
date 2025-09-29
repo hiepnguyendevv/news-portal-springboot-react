@@ -46,6 +46,28 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   };
 
+  const refreshUser = async () => {
+    try {
+      const response = await newsAPI.getCurrentUser();
+      setUser(response.data);
+      setIsAuthenticated(true);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
+
+  const oauth2Login = async (token,userData) => {
+    try {
+      localStorage.setItem('token', token);
+      setUser(userData);
+      setIsAuthenticated(true);
+      return { success: true, user: userData };
+    } catch (error) {
+      return { success: false, error: error.response?.data?.error || 'Đăng nhập thất bại' };
+    }
+  };
+
   const login = async (credentials) => {
     try {
       const response = await newsAPI.login(credentials);
@@ -94,7 +116,9 @@ export const AuthProvider = ({ children }) => {
     loading,
     login,
     signup,
-    logout
+    logout,
+    oauth2Login,
+    refreshUser
   };
 
   return (

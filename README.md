@@ -15,10 +15,13 @@
 - **Spring Security** - Authentication & Authorization
 - **Spring Data JPA** - Data Access Layer
 - **JWT (JSON Web Token)** - Token-based Authentication
+- **OAuth2 Google** - Đăng nhập bằng Google
+- **Redis** (Spring Data Redis, Lettuce) - Cache/Session/Counter
 - **Maven** - Build Tool
 
-### Database
+### Database & Cache
 - **MySQL 8.0** - Relational Database
+- **Redis 7** - In-memory store
 
 ## 📋 Yêu cầu hệ thống
 
@@ -66,9 +69,9 @@ docker-compose down
 
 ### Cấu trúc Docker:
 - **MySQL 8.0** - Database (port 3307)
+- **Redis 7** - Cache/Session/Counter (port 6379)
 - **Spring Boot** - Backend API (port 8080)
 - **React + Nginx** - Frontend (port 3000)
-=
 
 ## 🚀 Hướng dẫn cài đặt và chạy project
 
@@ -145,16 +148,21 @@ Sau khi chạy backend thành công (cả Docker và cách thông thường), b�
 1. **Mở Postman** và tạo request mới
 2. **Thiết lập request:**
    - Method: `POST`
-   - URL: `http://localhost:8080/api/news/import-sample-data`
+   - URL: `http://localhost:8080/api/news/import-data`
    - Headers: `Content-Type: application/json`
    - Body: `{}` (để trống)
 
 3. **Gửi request** để import dữ liệu mẫu
 
+Bạn cũng có thể thêm hoặc xóa dữ liệu mẫu bằng các endpoint khác:
+
+- Thêm một số tin mẫu: `POST /api/news/add-sample`
+- Xóa toàn bộ dữ liệu mẫu: `POST /api/news/clear-all-data`
+
 ### Cách 2: Sử dụng cURL
 
 ```bash
-curl -X POST http://localhost:8080/api/news/import-sample-data \
+curl -X POST http://localhost:8080/api/news/import-data \
   -H "Content-Type: application/json" \
   -d "{}"
 ```
@@ -188,32 +196,75 @@ Sau khi đăng nhập, bạn sẽ có quyền truy cập vào trang Admin để 
 ## 📱 Tính năng chính
 
 ### Cho người dùng thường:
-- ✅ Xem danh sách tin tức
+- ✅ Xem danh sách tin tức (đã xuất bản)
 - ✅ Xem chi tiết tin tức
 - ✅ Tìm kiếm tin tức
-- ✅ Lọc tin tức theo danh mục
+- ✅ Lọc tin tức theo danh mục và theo slug
 - ✅ Đăng ký tài khoản
-- ✅ Đăng nhập/đăng xuất
-- ✅ Quản lý tin tức cá nhân (tạo, sửa, xóa)
+- ✅ Đăng nhập/đăng xuất (JWT)
+- ✅ Đăng nhập bằng Google (OAuth2)
+- ✅ Quản lý tin tức cá nhân (tạo, sửa, xóa, gửi duyệt)
+- ✅ Nhận thông báo và đánh dấu đã đọc
+- ✅ Đếm lượt xem tin tức, xem theo lượt xem tăng/giảm
 
 ### Cho quản trị viên:
-- ✅ Quản lý người dùng
-- ✅ Quản lý danh mục tin tức
-- ✅ Quản lý tất cả tin tức
+- ✅ Quản lý người dùng (cập nhật trạng thái)
+- ✅ Quản lý danh mục tin tức (kèm đếm số bài viết)
+- ✅ Quản lý tất cả tin tức (cập nhật trạng thái bài)
 - ✅ Phân quyền người dùng
 
-## 🔧 Cấu hình API
+## 🔧 Cấu hình API (cập nhật theo mã nguồn hiện tại)
 
-### Endpoints chính:
-- `GET /api/news` - Lấy danh sách tin tức
-- `GET /api/news/{id}` - Lấy chi tiết tin tức
-- `POST /api/news/import-sample-data` - Import dữ liệu mẫu
-- `POST /api/auth/login` - Đăng nhập
+Lưu ý: Toàn bộ endpoint đều có tiền tố `/api`.
+
+### News
+- `GET /api/news/published` - Danh sách tin đã xuất bản
+- `GET /api/news/{id}` - Chi tiết tin
+- `GET /api/news/category/{category}` - Danh sách theo danh mục
+- `GET /api/news/category/slug/{slug}` - Danh sách theo slug danh mục
+- `GET /api/news/search?keyword=...` - Tìm kiếm tin
+- `POST /api/news/{id}/view` - Tăng lượt xem bài viết
+- `GET /api/news/view-desc` - Danh sách theo lượt xem giảm dần
+- `GET /api/news/view-asc` - Danh sách theo lượt xem tăng dần
+- Import/Xử lý dữ liệu mẫu:
+  - `POST /api/news/import-data`
+  - `POST /api/news/add-sample`
+  - `POST /api/news/clear-all-data`
+
+### My News (người dùng hiện tại)
+- `GET /api/news/my-news`
+- `POST /api/news/my-news`
+- `PUT /api/news/my-news/{id}`
+- `DELETE /api/news/my-news/{id}`
+- `POST /api/news/my-news/{id}/submit` - Gửi bài duyệt
+
+### Category
+- `GET /api/category` - Tất cả danh mục gốc
+- `GET /api/category/all` - Bao gồm danh mục con
+- `GET /api/category/{id}`
+- `GET /api/category/slug/{slug}`
+- `GET /api/category/subcategories/{parentSlug}` - Lấy danh mục con theo slug cha
+- `GET /api/category/{categoryId}/count` - Đếm số bài theo danh mục
+
+### Notifications
+- `GET /api/notifications` - Lấy thông báo của tôi
+- `GET /api/notifications/unread-count` - Đếm chưa đọc
+- `POST /api/notifications/{id}/read` - Đánh dấu đã đọc
+
+### Admin
+- News: `GET/POST/PUT/DELETE /api/admin/news`, `PUT /api/admin/news/{id}/status`
+- Users: `GET/POST/PUT/DELETE /api/admin/users`, `PATCH /api/admin/users/{id}/status`
+- Category: `POST/PUT/DELETE /api/admin/category`
+
+### Auth & Profile
+- `POST /api/auth/signin` - Đăng nhập
 - `POST /api/auth/signup` - Đăng ký
-- `GET /api/categories` - Lấy danh sách danh mục
-- `GET /api/users` - Lấy danh sách người dùng (Admin)
+- `GET /api/auth/me` - Lấy thông tin người dùng hiện tại
+- `POST /api/auth/logout` - Đăng xuất
+- `PUT /api/auth/me` - Cập nhật hồ sơ của tôi
+- `GET /api/oauth2/callback` - Đăng nhập Google (redirect handler)
 
-### Authentication:
+### Authentication
 - Sử dụng JWT token
 - Token được gửi trong header: `Authorization: Bearer <token>`
 
@@ -223,6 +274,10 @@ Sau khi đăng nhập, bạn sẽ có quyền truy cập vào trang Admin để 
 - **users** - Thông tin người dùng
 - **categories** - Danh mục tin tức
 - **news** - Tin tức
+
+## ⚙️ Ghi chú triển khai Redis
+- Đã cấu hình `spring.data.redis.host` và `spring.data.redis.port` cho cả môi trường local và Docker.
+- Sử dụng Redis cho cache/session/counter (lượt xem, thông báo,... theo thiết kế).
 
 ## 🐛 Troubleshooting
 
