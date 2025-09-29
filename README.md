@@ -167,9 +167,6 @@ curl -X POST http://localhost:8080/api/news/import-data \
   -d "{}"
 ```
 
-
-```
-
 **Lưu ý:** Dữ liệu mẫu bao gồm:
 - 1 tài khoản admin (username: `admin`, password: `admin123`)
 - Các danh mục tin tức (Công nghệ, Thể thao, Kinh tế...)
@@ -333,5 +330,10 @@ Lưu ý: Toàn bộ endpoint đều có tiền tố `/api`.
 - JWT token có thời hạn 24 giờ
 - Mật khẩu được mã hóa bằng BCrypt
 - Có phân quyền USER và ADMIN
+
+## 🔒 Bảo mật & Secrets
+- Không commit secrets (JWT secret, Google OAuth client id/secret) vào git.
+- Sử dụng biến môi trường. Với Docker Compose, đặt trong file `.env` (đã bị ignore).
+- Cung cấp `.env.example`; người dùng tự điền `.env` trước khi chạy.
 
 
