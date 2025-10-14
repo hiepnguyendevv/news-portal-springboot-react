@@ -15,7 +15,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/category")
-@CrossOrigin(origins = "http://localhost:3000")
+//@CrossOrigin(origins = "http://localhost:3000")
 
 public class AdminCategoryController {
 
@@ -105,5 +105,33 @@ public class AdminCategoryController {
         System.out.println(id);
         categoryRepository.deleteById(id);
         return "Category deleted successfully";
+    }
+
+    // Bulk delete categories
+    @DeleteMapping("/bulk")
+    public ResponseEntity<?> bulkDeleteCategories(@RequestParam List<Long> categoryIds) {
+        try {
+            if (categoryIds == null || categoryIds.isEmpty()) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Danh sách ID danh mục không được để trống"));
+            }
+
+            int deletedCount = 0;
+            for (Long id : categoryIds) {
+                if (categoryRepository.existsById(id)) {
+                    categoryRepository.deleteById(id);
+                    deletedCount++;
+                }
+            }
+
+            return ResponseEntity.ok(Map.of(
+                "message", "Đã xóa " + deletedCount + " danh mục thành công",
+                "deletedCount", deletedCount
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", "Lỗi khi xóa danh mục: " + e.getMessage()));
+        }
     }
 }

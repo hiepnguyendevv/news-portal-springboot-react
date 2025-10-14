@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '../components/AuthContext';
 import { newsAPI } from '../services/api';
+import { toast } from 'react-toastify';
 
 const EditMyNews = () => {
   const [formData, setFormData] = useState({
@@ -11,20 +11,22 @@ const EditMyNews = () => {
     categoryId: '',
     imageUrl: '',
     published: false,
-    featured: false
+    featured: false,
+    tags: []
   });
   const [categories, setCategories] = useState([]);
+  const [tags, setTags] = useState([]);
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const { user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
 
   useEffect(() => {
     fetchCategories();
+    fetchTags();
     fetchNewsData();
   }, [id]);
 
@@ -37,11 +39,24 @@ const EditMyNews = () => {
     }
   };
 
+  const fetchTags = async () => {
+    try {
+      const response = await newsAPI.getAllTags();
+      setTags(response.data || []);
+    } catch (err) {
+      console.error('Error fetching tags:', err);
+    }
+  };
+
   const fetchNewsData = async () => {
     try {
       setPageLoading(true);
       const response = await newsAPI.getNewsById(id);
       const newsData = response.data;
+      
+      // Xử lý tags - có thể là objects hoặc strings
+      const processedTags = newsData.tags ? 
+        newsData.tags.map(tag => typeof tag === 'object' ? tag.name : tag) : [];
       
       setFormData({
         title: newsData.title || '',
@@ -50,11 +65,15 @@ const EditMyNews = () => {
         categoryId: newsData.category?.id || '',
         imageUrl: newsData.imageUrl || '',
         published: newsData.published || false,
-        featured: newsData.featured || false
+        featured: newsData.featured || false,
+        tags: processedTags
       });
+      console.log("newsData", newsData.tags);
+      console.log("processedTags", processedTags);
     } catch (err) {
-      setError('Không thể tải thông tin bài viết');
+      // setError('Không thể tải thông tin bài viết');
       console.error('Error fetching news:', err);
+      toast.error('Không thể tải thông tin bài viết');
     } finally {
       setPageLoading(false);
     }
@@ -68,11 +87,27 @@ const EditMyNews = () => {
     }));
   };
 
+  
+
+  const handleToggleTag = (tagName) => {  
+    setFormData(prev => {
+      // Nếu tag đã được chọn thì bỏ chọn, nếu chưa chọn thì thêm vào
+      if (prev.tags.includes(tagName)) {
+        // Bỏ chọn: lọc ra tag này
+        return { ...prev, tags: prev.tags.filter(name => name !== tagName) };
+      } else {
+        // Chọn: thêm tag này vào
+        return { ...prev, tags: [...prev.tags, tagName] };
+      }
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!formData.title || !formData.content || !formData.categoryId) {
       setError('Vui lòng điền đầy đủ thông tin bắt buộc');
+      toast.warning('Vui lòng điền đầy đủ thông tin bắt buộc');
       return;
     }
 
@@ -80,16 +115,26 @@ const EditMyNews = () => {
     setError('');
     
     try {
-      await newsAPI.updateMyNews(id, formData);
-      setSuccess('Cập nhật bài viết thành công!');
+      // Đảm bảo categoryId là number
+      const updateData = {
+        ...formData,
+        categoryId: formData.categoryId ? parseInt(formData.categoryId) : null
+      };
+      console.log("Sending update data:", updateData);
+      await newsAPI.updateMyNews(id, updateData);
+      // setSuccess('Cập nhật bài viết thành công!');
+      toast.success('Cập nhật bài viết thành công');
       
       // Chuyển đến trang My News sau 2 giây
-      setTimeout(() => {
+      // setTimeout(() => {
         navigate('/my-news');
-      }, 2000);
+      // }, 2000);
 
     } catch (err) {
+      console.error('Update error:', err);
+      console.error('Error response:', err.response?.data);
       setError('Có lỗi xảy ra khi cập nhật bài viết: ' + (err.response?.data?.error || err.message));
+      toast.error('Cập nhật bài viết thất bại: ' + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -247,7 +292,29 @@ const EditMyNews = () => {
                         />
                       )}
                     </div>
-              
+               {/* Tags */}
+               <div className="mb-3">
+                      <label htmlFor="tags" className="form-label">
+                        Tags <span className="text-danger">*</span>
+                      </label>
+
+                      <div className="d-flex flex-wrap gap-2">
+                        {tags.map(tag => {
+                          const selected = formData.tags.includes(tag.name);
+                          return (
+                            <button
+                              key={tag.id}
+                              type="button"
+                              className={`btn btn-sm ${selected ? 'btn-primary' : 'btn-outline-secondary'}`}
+                              onClick={() => handleToggleTag(tag.name)}
+                            >
+                              {tag.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
 
                     {/* Submit Button */}
                     <div className="d-grid">

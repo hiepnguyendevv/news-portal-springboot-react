@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../components/AuthContext';
 import { newsAPI } from '../../services/api';
-
+import { toast } from 'react-toastify';
 const EditUser = () => {
   const [formData, setFormData] = useState({
     username: '',
@@ -68,9 +68,11 @@ const EditUser = () => {
       }
       
       await newsAPI.updateUser(id, updateData);
+      toast.success('Cập nhật người dùng thành công');
       navigate('/admin/users');
     } catch (err) {
-      setError('Có lỗi xảy ra: ' + (err.response?.data?.error || err.message));
+      // setError('Có lỗi xảy ra: ' + (err.response?.data?.error || err.message));
+      toast.error('Có lỗi xảy ra');
     } finally {
       setLoading(false);
     }

@@ -86,6 +86,7 @@ public class SecurityConfig {
                                 .requestMatchers("/oauth2/**").permitAll()
                                 .requestMatchers("/api/oauth2/**").permitAll()
                                 .requestMatchers("/api/auth/**").permitAll()
+                                .requestMatchers("/api/tags/**").permitAll()
                                 .requestMatchers("/api/news/test").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/api/news/**").permitAll()
                                 .requestMatchers("/api/category/**").permitAll()

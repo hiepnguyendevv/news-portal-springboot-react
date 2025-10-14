@@ -69,14 +69,14 @@ public class User {
 
     // Enum cho Role
     public enum UserRole {
-        ADMIN,      // Quản trị viên
-        USER        // Người dùng thường
+        ADMIN,      
+        USER        
     }
 
     // Enum cho Status
     public enum UserStatus {
-        ACTIVE,     // Hoạt động
-        INACTIVE,   // Không hoạt động
+        ACTIVE,     
+        INACTIVE,   
     }
 
     public User(){

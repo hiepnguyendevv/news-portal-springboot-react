@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { newsAPI } from '../services/api';
-
+import BookmarkButton from '../components/BookmarkButton';
+import CommentSection from '../components/CommentSection';
 const NewsDetail = () => {
   const { slugWithId } = useParams(); // Nhận "tin-tuc-moi-123"
   
@@ -16,16 +17,25 @@ const NewsDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const incrementedRef = React.useRef(false);
+  const [tags, setTags] = useState([]);
 
   useEffect(() => {
     fetchNewsDetail();
   }, [id]);
-
+   
   const fetchNewsDetail = async () => {
     try {
       setLoading(true);
       const response = await newsAPI.getNewsById(id);
+      
+      // Kiểm tra nếu không có data (bất kể status code)
+      if (!response.data) {
+        setError('Bài viết không tồn tại hoặc đã bị gỡ xuống.');
+        return;
+      }
+      
       setNews(response.data);
+      console.log(response.data);
       setError(null);
 
       if (!incrementedRef.current) {
@@ -33,10 +43,30 @@ const NewsDetail = () => {
         newsAPI.incrementViewCount(id).catch(() => {});
       }
     } catch (err) {
-      setError('Không thể tải chi tiết tin tức.');
       console.error('Error fetching news detail:', err);
+      
+      // Kiểm tra các trường hợp lỗi khác nhau
+      if (err.response?.status === 404) {
+        setError('Bài viết không tồn tại hoặc đã bị gỡ xuống.');
+      } else if (err.response?.status === 304) {
+        // 304 Not Modified - có thể là cache issue
+        setError('Bài viết không tồn tại hoặc đã bị gỡ xuống.');
+      } else if (err.response?.status >= 400) {
+        setError('Bài viết không tồn tại hoặc đã bị gỡ xuống.');
+      } else {
+        setError('Không thể tải chi tiết tin tức.');
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTags = async () => {
+    try {
+      const response = await newsAPI.getTagsByNewsId(id);
+      setTags(response.data);
+    } catch (err) {
+      console.error('Error fetching tags:', err);
     }
   };
 
@@ -74,13 +104,17 @@ const NewsDetail = () => {
   if (error) {
     return (
       <div className="container">
-        <div className="error-message">
-          <i className="fas fa-exclamation-triangle me-2"></i>
-          {error}
-          <br />
-          <Link to="/" className="btn btn-primary mt-2">
-            Về trang chủ
-          </Link>
+        <div className="error-message text-center py-5">
+          <i className="fas fa-exclamation-triangle me-2 text-warning" style={{fontSize: '2rem'}}></i>
+          <h3 className="mt-3">{error}</h3>
+          <p className="text-muted">Bài viết có thể đã bị gỡ xuống hoặc chưa được phê duyệt.</p>
+          <div className="mt-4">
+            <Link to="/" className="btn btn-primary me-2">
+              <i className="fas fa-home me-1"></i>
+              Về trang chủ
+            </Link>
+
+          </div>
         </div>
       </div>
     );
@@ -95,10 +129,10 @@ const NewsDetail = () => {
       <nav aria-label="breadcrumb">
         <ol className="breadcrumb">
           <li className="breadcrumb-item">
-            <Link to="/">Trang chủ</Link>
+            <Link to="/" className="text-decoration-none">Trang chủ</Link>
           </li>
-          <li className="breadcrumb-item">
-            <Link to={`/category/${encodeURIComponent(news.category?.slug || news.category)}`}>
+          <li className="breadcrumb-item ">
+            <Link className="text-decoration-none" to={`/category/${encodeURIComponent(news.category?.slug || news.category)}`}>
               {news.category?.name || news.category}
             </Link>
           </li>
@@ -142,7 +176,12 @@ const NewsDetail = () => {
           <div className="news-content">
             <div className="fs-5 lh-lg">
               {news.content.split('\n').map((paragraph, index) => (
-                <p key={index} className="mb-3">{paragraph}</p>
+                <p key={index} className="mb-3" style={{
+                  wordBreak: 'break-word',
+                  overflowWrap: 'break-word',
+                  hyphens: 'auto',
+                  maxWidth: '100%'
+                }}>{paragraph}</p>
               ))}
             </div>
           </div>
@@ -160,15 +199,24 @@ const NewsDetail = () => {
                 <i className="fas fa-share me-1"></i>
                 Chia sẻ
               </button>
-              <button className="btn btn-outline-secondary">
-                <i className="fas fa-bookmark me-1"></i>
-                Lưu
-              </button>
+              
+                <BookmarkButton newsId={news.id}/>
+            </div>
+            
+          </div>
+          <div className="mb-4">
+            <h5 className="mb-3">Tags</h5>
+            <div className="d-flex flex-wrap">
+              {news.tags.map((tag) => (
+                <span key={tag.id} className="badge bg-primary me-2">{tag != null ? tag.name : 'null'}</span>
+              ))}
             </div>
           </div>
         </div>
       </article>
+      <CommentSection newsId={news.id}/>
     </div>
+    
   );
 };
 

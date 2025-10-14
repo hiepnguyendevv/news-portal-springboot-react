@@ -91,6 +91,7 @@ const Admin = () => {
                     <span>Quản lý người dùng</span>
                   </button>
                 </div>
+                
                 <div className="col-md-3">
                   <button 
                     className="btn btn-outline-warning w-100"
@@ -98,6 +99,17 @@ const Admin = () => {
                   >
                     <i className="fas fa-tags fa-2x d-block mb-2"></i>
                     <span>Quản lý danh mục</span>
+                  </button>
+                </div>
+               
+
+                <div className="col-md-3">
+                  <button 
+                    className="btn btn-outline-success w-100"
+                    onClick={() => navigate('/admin/comments')}
+                  >
+                    <i className="fas fa-comments fa-2x d-block mb-2"></i>
+                    <span>Quản lý bình luận</span>
                   </button>
                 </div>
               </div>

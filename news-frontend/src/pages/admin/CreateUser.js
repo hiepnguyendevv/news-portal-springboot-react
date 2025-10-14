@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../components/AuthContext';
 import { newsAPI } from '../../services/api';
-
+import { toast } from 'react-toastify';
 const CreateUser = () => {
   const [formData, setFormData] = useState({
     username: '',
@@ -36,9 +36,11 @@ const CreateUser = () => {
     
     try {
       await newsAPI.createUser(formData);
+      toast.success('Tạo người dùng thành công');
       navigate('/admin/users');
     } catch (err) {
-      setError('Có lỗi xảy ra: ' + (err.response?.data?.error || err.message));
+      // setError('Có lỗi xảy ra: ' + (err.response?.data?.error || err.message));
+      toast.error('Có lỗi xảy ra');
     } finally {
       setLoading(false);
     }

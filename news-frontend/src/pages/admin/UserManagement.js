@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { newsAPI } from '../../services/api';
 import UserTable from '../../components/UserTable';
 import ConfirmModal from '../../components/ConfirmModal';
+import { toast } from 'react-toastify';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
@@ -12,6 +13,10 @@ const UserManagement = () => {
   const [filter, setFilter] = useState('all');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [showBulkStatusModal, setShowBulkStatusModal] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState('ACTIVE');
 
   const navigate = useNavigate();
 
@@ -45,7 +50,8 @@ const UserManagement = () => {
 
       setUsers(filteredUsers);
     } catch (err) {
-      setError('Không thể tải danh sách người dùng');
+      // setError('Không thể tải danh sách người dùng');
+      toast.error('Không thể tải danh sách người dùng');
     } finally {
       setLoading(false);
     }
@@ -71,9 +77,11 @@ const UserManagement = () => {
 
       await newsAPI.deleteUser(selectedUserId);   
       setUsers(users.filter(user => user.id !== selectedUserId));
-      setSuccess('Xóa người dùng thành công!');
+      // setSuccess('Xóa người dùng thành công!');
+      toast.success('Xóa người dùng thành công');
     } catch (err) {
-      setError('Lỗi khi xóa người dùng: ' + err.message);
+      // setError('Lỗi khi xóa người dùng: ' + err.message);
+      toast.error('Lỗi khi xóa người dùng');
     } finally {
       setShowDeleteModal(false);
       setSelectedUserId(null);
@@ -86,9 +94,82 @@ const UserManagement = () => {
       setUsers(users.map(user => 
         user.id === userId ? { ...user, status: newStatus } : user
       ));
-      setSuccess('Cập nhật trạng thái thành công!');
+      // setSuccess('Cập nhật trạng thái thành công!');
+      toast.success('Cập nhật trạng thái thành công');
     } catch (err) {
-      setError('Lỗi khi cập nhật trạng thái: ' + err.message);
+      // setError('Lỗi khi cập nhật trạng thái: ' + err.message);
+      toast.error('Lỗi khi cập nhật trạng thái');
+    }
+  };
+
+  // Bulk action handlers
+  const handleSelectItem = (itemId, checked) => {
+    if (checked) {
+      setSelectedItems(prev => [...prev, itemId]);
+    } else {
+      setSelectedItems(prev => prev.filter(id => id !== itemId));
+    }
+  };
+
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      setSelectedItems(users.map(user => user.id));
+    } else {
+      setSelectedItems([]);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedItems.length === 0) {
+      toast.warning('Vui lòng chọn ít nhất một người dùng để xóa');
+      return;
+    }
+    setShowBulkDeleteModal(true);
+  };
+
+  const handleBulkStatusUpdate = () => {
+    if (selectedItems.length === 0) {
+      toast.warning('Vui lòng chọn ít nhất một người dùng để cập nhật trạng thái');
+      return;
+    }
+    setShowBulkStatusModal(true);
+  };
+
+  const handleConfirmBulkDelete = async () => {
+    try {
+      console.log('Deleting user IDs:', selectedItems);
+      const response = await newsAPI.bulkDeleteUsers(selectedItems);
+      console.log('Delete response:', response);
+      setUsers(users.filter(user => !selectedItems.includes(user.id)));
+      toast.success(response.data.message);
+      setSelectedItems([]);
+    } catch (err) {
+      console.error('Error deleting users:', err);
+      console.error('Error response:', err.response);
+      toast.error('Lỗi khi xóa người dùng: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setShowBulkDeleteModal(false);
+    }
+  };
+
+  const handleConfirmBulkStatusUpdate = async () => {
+    try {
+      console.log('Updating status for user IDs:', selectedItems, 'to status:', bulkStatus);
+      const response = await newsAPI.bulkUpdateUserStatus(selectedItems, bulkStatus);
+      console.log('Status update response:', response);
+      setUsers(users.map(user => 
+        selectedItems.includes(user.id) 
+          ? { ...user, status: bulkStatus } 
+          : user
+      ));
+      toast.success(response.data.message);
+      setSelectedItems([]);
+    } catch (err) {
+      console.error('Error updating user status:', err);
+      console.error('Error response:', err.response);
+      toast.error('Lỗi khi cập nhật trạng thái: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setShowBulkStatusModal(false);
     }
   };
 
@@ -103,6 +184,26 @@ const UserManagement = () => {
         confirmBtnClass="btn-danger"
         onConfirm={handleConfirmDelete}
         onClose={() => { setShowDeleteModal(false); setSelectedUserId(null); }}
+      />
+      <ConfirmModal
+        show={showBulkDeleteModal}
+        title="Xóa nhiều người dùng"
+        message={`Bạn có chắc chắn muốn xóa ${selectedItems.length} người dùng đã chọn? Hành động này không thể hoàn tác.`}
+        confirmText="Xóa tất cả"
+        cancelText="Hủy"
+        confirmBtnClass="btn-danger"
+        onConfirm={handleConfirmBulkDelete}
+        onClose={() => setShowBulkDeleteModal(false)}
+      />
+      <ConfirmModal
+        show={showBulkStatusModal}
+        title="Cập nhật trạng thái nhiều người dùng"
+        message={`Bạn có chắc chắn muốn cập nhật trạng thái ${selectedItems.length} người dùng đã chọn thành ${bulkStatus === 'ACTIVE' ? 'Hoạt động' : 'Không hoạt động'}?`}
+        confirmText="Cập nhật tất cả"
+        cancelText="Hủy"
+        confirmBtnClass="btn-success"
+        onConfirm={handleConfirmBulkStatusUpdate}
+        onClose={() => setShowBulkStatusModal(false)}
       />
       <div className="row">
         <div className="col-12">
@@ -135,6 +236,7 @@ const UserManagement = () => {
             <div className="alert alert-danger" role="alert">
               <i className="fas fa-exclamation-circle me-2"></i>
               {error}
+              toast.error('Lỗi khi xóa người dùng');
             </div>
           )}
 
@@ -183,8 +285,57 @@ const UserManagement = () => {
 
           {/* Users Table */}
           <div className="card">
-            <div className="card-header">
+            <div className="card-header d-flex justify-content-between align-items-center">
               <h5 className="mb-0">Danh sách người dùng</h5>
+              {selectedItems.length > 0 && (
+                <div className="btn-group">
+                  <div className="dropdown me-2">
+                    <button 
+                      className="btn btn-warning btn-sm dropdown-toggle"
+                      type="button"
+                      data-bs-toggle="dropdown"
+                      title="Cập nhật trạng thái tất cả đã chọn"
+                    >
+                      <i className="fas fa-user-check me-1"></i>
+                      Trạng thái ({selectedItems.length})
+                    </button>
+                    <ul className="dropdown-menu">
+                      <li>
+                        <button 
+                          className="dropdown-item"
+                          onClick={() => {
+                            setBulkStatus('ACTIVE');
+                            handleBulkStatusUpdate();
+                          }}
+                        >
+                          <i className="fas fa-check-circle text-success me-2"></i>
+                          Kích hoạt
+                        </button>
+                      </li>
+                      <li>
+                        <button 
+                          className="dropdown-item"
+                          onClick={() => {
+                            setBulkStatus('INACTIVE');
+                            handleBulkStatusUpdate();
+                          }}
+                        >
+                          <i className="fas fa-ban text-danger me-2"></i>
+                          Vô hiệu hóa
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+                  <button 
+                    className="btn btn-danger btn-sm"
+                    onClick={handleBulkDelete}
+                    title="Xóa tất cả đã chọn"
+                  >
+                    <i className="fas fa-trash me-1"></i>
+                    Xóa ({selectedItems.length})
+                  </button>
+                </div>
+              )}
             </div>
             <div className="card-body">
               {loading ? (
@@ -199,6 +350,9 @@ const UserManagement = () => {
                   onEdit={handleEditUser}
                   onDelete={handleDeleteUser}
                   onToggleStatus={handleToggleStatus}
+                  selectedItems={selectedItems}
+                  onSelectItem={handleSelectItem}
+                  onSelectAll={handleSelectAll}
                 />
               ) : (
                 <div className="text-center py-4">

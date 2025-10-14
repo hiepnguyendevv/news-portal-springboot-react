@@ -138,7 +138,5 @@ public class Category {
             return name;
         }
         return parent.getFullPath() + " > " + name;
-
-
     }
 }

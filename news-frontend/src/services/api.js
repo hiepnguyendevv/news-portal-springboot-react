@@ -39,6 +39,9 @@ export const newsAPI = {
    // News APIs
    getNewsById: async (id) => api.get(`/news/${id}`), 
    getPublishedNews: async () => api.get("/news/published"),
+   getPublishedNewsPaged: async (page = 0, size = 12) => {
+     return api.get(`/news/published/paged?page=${page}&size=${size}`);
+   },
    importSampleData: async () => api.post("/news/import-data"),
    addSampleNews: async () => api.post("/news/add-sample"),
    clearAllData: async () => api.post("/news/clear-all-data"),
@@ -47,11 +50,23 @@ export const newsAPI = {
    searchNews: async (keyword) => api.get(`/news/search?keyword=${encodeURIComponent(keyword)}`),
    
    // Admin News APIs
-   getAllNews: async () => api.get("/admin/news"),
+  getAllNews: async (page = 0, size = 20) => api.get(`/admin/news?page=${page}&size=${size}`),
+  adminSearchNews: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.page !== undefined) params.append('page', filters.page);
+    if (filters.size !== undefined) params.append('size', filters.size);
+    if (filters.filter) params.append('filter', filters.filter);
+    if (filters.category) params.append('category', filters.category);
+    if (filters.q) params.append('q', filters.q);
+    if (filters.sortBy) params.append('sortBy', filters.sortBy);
+    return api.get(`/admin/news/search?${params.toString()}`);
+  },
    createNews: async (newsData) => api.post("/admin/news", newsData),
    updateNews: async (id, newsData) => api.put(`/admin/news/${id}`, newsData),
    deleteNews: async (id) => api.delete(`/admin/news/${id}`),
    updateNewsStatus: async (id, statusData) => api.put(`/admin/news/${id}/status`, statusData),
+   bulkDeleteNews: async (newsIds) => api.delete(`/admin/news/bulk?${newsIds.map(id => `newsIds=${id}`).join('&')}`),
+   bulkApproveNews: async (newsIds) => api.put(`/admin/news/bulk/approve?${newsIds.map(id => `newsIds=${id}`).join('&')}`),
 
    // My News APIs
    getMyNews: async () => api.get("/news/my-news"),
@@ -75,6 +90,7 @@ export const newsAPI = {
    createCategory: async (categoryData) => api.post("/admin/category", categoryData),
    updateCategory: async (id, categoryData) => api.put(`/admin/category/${id}`, categoryData),
    deleteCategory: async (id) => api.delete(`/admin/category/${id}`),
+   bulkDeleteCategories: async (categoryIds) => api.delete(`/admin/category/bulk?${categoryIds.map(id => `categoryIds=${id}`).join('&')}`),
    countNewsByCategory: async (categoryId) => api.get(`/category/${categoryId}/count`),
    
   // Admin User APIs
@@ -84,6 +100,8 @@ export const newsAPI = {
   updateUser: async (id, userData) => api.put(`/admin/users/${id}`, userData),
   deleteUser: async (id) => api.delete(`/admin/users/${id}`),
   updateUserStatus: async (id, status) => api.patch(`/admin/users/${id}/status`, { status }),
+  bulkDeleteUsers: async (userIds) => api.delete(`/admin/users/bulk?${userIds.map(id => `userIds=${id}`).join('&')}`),
+  bulkUpdateUserStatus: async (userIds, status) => api.patch(`/admin/users/bulk/status?${userIds.map(id => `userIds=${id}`).join('&')}&status=${status}`),
 
    // Auth APIs
    login: async (credentials) => api.post("/auth/signin", credentials),
@@ -97,10 +115,51 @@ export const newsAPI = {
   googleLogin: async () => api.get('/oauth2/callback'),
 
   incrementViewCount: async (id) => api.post(`/news/${id}/view`),
+  getNewsByViewCountDesc: async (page = 0, size = 20) => api.get(`/news/view-desc?page=${page}&size=${size}`),
+  getNewsByViewCountAsc: async (page = 0, size = 20) => api.get(`/news/view-asc?page=${page}&size=${size}`),
 
-  //
-  getNewsByViewCountDesc: async () => api.get('/news/view-desc'),
-  getNewsByViewCountAsc: async () => api.get('/news/view-asc'),
+  // Tags APIs
+  getAllTags: async () => api.get('/tags'),
+  
+
+  //Bookmarked News APIs
+  toggleBookmark: async (id,bookmarked) => {
+    return bookmarked ? api.delete(`/news/${id}/bookmark`) : api.post(`/news/${id}/bookmark`);
+  },
+  
+  isBookmarked: async (id) => api.get(`/news/${id}/bookmark/status`),
+  getMyBookmark: async (page = 0 , size = 12) => api.get(`/me/bookmark?page=${page}&size=${size}`),
+
+  // Comment APIs
+  getComments: async (newsId, page = 0, size = 10) => api.get(`/comments?newsId=${newsId}&page=${page}&size=${size}`),
+  getReplies: async (parentId) => api.get(`/comments/${parentId}/replies`),
+  addComment: async (newsId, content, parentId) => api.post(`/comments`, {newsId, content, parentId}),
+  deleteComment: async (commentId) => api.delete(`/comments/${commentId}`),
+  likeComment: async (commentId) => api.post(`/comments/${commentId}/like`),
+  unlikeComment: async (commentId) => api.delete(`/comments/${commentId}/like`),
+  hasUserLikedComment: async (commentId) => api.get(`/comments/${commentId}/like`),
+  getMyComments: async (page = 0, size = 10) => api.get(`/me/comments?page=${page}&size=${size}`),
+
+  //Admin Comment APIs
+  getAllComments: async (page = 0, size = 100) => api.get(`/admin/comment?page=${page}&size=${size}`),
+  adminDeleteComment: async (commentId) => api.delete(`/admin/comment/${commentId}`),
+  restoreComment: async (commentId) => api.put(`/admin/comment/${commentId}/restore`),
+  softDeleteComment: async (commentId) => api.delete(`/admin/comment/${commentId}/soft-delete`),
+  getCommentById: async (commentId, page = 0, size = 10) => api.get(`/admin/comment/${commentId}?page=${page}&size=${size}`),
+  searchComment: async (filters = {}) => {
+    const params = new URLSearchParams();
+    
+    if (filters.content) params.append('content', filters.content);
+    if (filters.author) params.append('author', filters.author);
+    if (filters.news) params.append('news', filters.news);
+    if (filters.status) params.append('status', filters.status);
+    if (filters.page) params.append('page', filters.page);
+    if (filters.size) params.append('size', filters.size);
+    
+    console.log('Search comment API call with params:', params.toString());
+    return api.get(`/admin/comment/search?${params.toString()}`);
+  },
+  //Tag APIs
 }; 
 
 export default api;

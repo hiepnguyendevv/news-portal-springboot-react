@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,6 +18,9 @@ public interface NewsRepository extends JpaRepository<News, Long> {
 
     // Tìm tin đã xuất bản
     List<News> findByPublishedTrueOrderByCreatedAtDesc();
+    
+    // Tìm tin đã xuất bản với phân trang
+    Page<News> findByPublishedTrueOrderByCreatedAtDesc(Pageable pageable);
 
 
     // Tìm kiếm
@@ -42,9 +47,28 @@ public interface NewsRepository extends JpaRepository<News, Long> {
     // Lấy tin tức của user theo authorId
     List<News> findByAuthorIdOrderByCreatedAtDesc(Long authorId);
 
-    List<News> findByPublishedTrueOrderByViewCountDesc();
+    Page<News> findByPublishedTrueOrderByViewCountDesc(Pageable pageable);
 
-    List<News> findByPublishedTrueOrderByViewCountAsc();
+    Page<News> findByPublishedTrueOrderByViewCountAsc(Pageable pageable);
 
-    List<News> findAllByOrderByCreatedAtDesc();
+    Page<News> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+    // Admin search with optional filters
+    @Query("""
+    SELECT n FROM News n
+    WHERE (:q IS NULL OR LOWER(n.title) LIKE LOWER(CONCAT('%', :q, '%'))
+       OR LOWER(n.content) LIKE LOWER(CONCAT('%', :q, '%')))
+      AND (:categoryId IS NULL OR n.category.id = :categoryId)
+      AND (:published IS NULL OR n.published = :published)
+      AND (:status IS NULL OR n.status = :status)
+      AND (:featured IS NULL OR n.featured = :featured)
+    """)
+    Page<News> adminSearch(
+            @Param("q") String q,
+            @Param("categoryId") Long categoryId,
+            @Param("published") Boolean published,
+            @Param("status") News.Status status,
+            @Param("featured") Boolean featured,
+            Pageable pageable
+    );
 }

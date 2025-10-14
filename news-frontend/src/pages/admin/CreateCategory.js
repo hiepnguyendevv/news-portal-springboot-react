@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { newsAPI } from '../../services/api';
+import { toast } from 'react-toastify';
 
 const CreateCategory = () => {
   const [formData, setFormData] = useState({
@@ -56,9 +57,11 @@ const CreateCategory = () => {
       };
       
       await newsAPI.createCategory(categoryData);
+      toast.success('Tạo danh mục thành công');
       navigate('/admin/categories');
     } catch (err) {
-      setError('Có lỗi xảy ra: ' + (err.response?.data?.error || err.message));
+      // setError('Có lỗi xảy ra: ' + (err.response?.data?.error || err.message));
+      toast.error('Có lỗi xảy ra');
     } finally {
       setLoading(false);
     }

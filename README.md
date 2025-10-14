@@ -139,52 +139,19 @@ cd Project-news
 4. **Frontend sẽ chạy tại:** `http://localhost:3000`
 
 
-## 📊 Import dữ liệu mẫu
-
-Sau khi chạy backend thành công (cả Docker và cách thông thường), bạn có thể import dữ liệu mẫu:
-
-### Cách 1: Sử dụng Postman 
-
-1. **Mở Postman** và tạo request mới
-2. **Thiết lập request:**
-   - Method: `POST`
-   - URL: `http://localhost:8080/api/news/import-data`
-   - Headers: `Content-Type: application/json`
-   - Body: `{}` (để trống)
-
-3. **Gửi request** để import dữ liệu mẫu
-
-Bạn cũng có thể thêm hoặc xóa dữ liệu mẫu bằng các endpoint khác:
-
-- Thêm một số tin mẫu: `POST /api/news/add-sample`
-- Xóa toàn bộ dữ liệu mẫu: `POST /api/news/clear-all-data`
-
-### Cách 2: Sử dụng cURL
-
-```bash
-curl -X POST http://localhost:8080/api/news/import-data \
-  -H "Content-Type: application/json" \
-  -d "{}"
-```
-
-**Lưu ý:** Dữ liệu mẫu bao gồm:
-- 1 tài khoản admin (username: `admin`, password: `admin123`)
-- Các danh mục tin tức (Công nghệ, Thể thao, Kinh tế...)
-- 20+ tin tức mẫu với hình ảnh ngẫu nhiên
-
 ## 🔐 Thông tin tài khoản Admin
 
 Sau khi import dữ liệu mẫu, bạn có thể đăng nhập với tài khoản admin:
 
 - **Username:** `admin`
-- **Password:** `admin123`
-- **Email:** `admin@news.com`
+- **Password:** `123456`
+- **Email:** `admin@example.com`
 - **Quyền:** ADMIN (có thể quản lý tất cả chức năng)
 
 **Cách đăng nhập:**
 1. Truy cập `http://localhost:3000/login`
 2. Nhập username: `admin`
-3. Nhập password: `admin123`
+3. Nhập password: `123456`
 4. Click "Đăng nhập"
 
 Sau khi đăng nhập, bạn sẽ có quyền truy cập vào trang Admin để quản lý người dùng, danh mục và tin tức.
@@ -203,67 +170,15 @@ Sau khi đăng nhập, bạn sẽ có quyền truy cập vào trang Admin để 
 - ✅ Quản lý tin tức cá nhân (tạo, sửa, xóa, gửi duyệt)
 - ✅ Nhận thông báo và đánh dấu đã đọc
 - ✅ Đếm lượt xem tin tức, xem theo lượt xem tăng/giảm
+- ✅ Bookmark bài viết (lưu, bỏ lưu, xem danh sách)
+- ✅ Bình luận, trả lời và like/unlike bình luận
 
 ### Cho quản trị viên:
 - ✅ Quản lý người dùng (cập nhật trạng thái)
 - ✅ Quản lý danh mục tin tức (kèm đếm số bài viết)
-- ✅ Quản lý tất cả tin tức (cập nhật trạng thái bài)
+- ✅ Quản lý tin tức: duyệt bài, từ chối, đặt/bỏ nổi bật
+- ✅ Tìm kiếm/lọc nâng cao cho tin tức và bình luận
 - ✅ Phân quyền người dùng
-
-## 🔧 Cấu hình API (cập nhật theo mã nguồn hiện tại)
-
-Lưu ý: Toàn bộ endpoint đều có tiền tố `/api`.
-
-### News
-- `GET /api/news/published` - Danh sách tin đã xuất bản
-- `GET /api/news/{id}` - Chi tiết tin
-- `GET /api/news/category/{category}` - Danh sách theo danh mục
-- `GET /api/news/category/slug/{slug}` - Danh sách theo slug danh mục
-- `GET /api/news/search?keyword=...` - Tìm kiếm tin
-- `POST /api/news/{id}/view` - Tăng lượt xem bài viết
-- `GET /api/news/view-desc` - Danh sách theo lượt xem giảm dần
-- `GET /api/news/view-asc` - Danh sách theo lượt xem tăng dần
-- Import/Xử lý dữ liệu mẫu:
-  - `POST /api/news/import-data`
-  - `POST /api/news/add-sample`
-  - `POST /api/news/clear-all-data`
-
-### My News (người dùng hiện tại)
-- `GET /api/news/my-news`
-- `POST /api/news/my-news`
-- `PUT /api/news/my-news/{id}`
-- `DELETE /api/news/my-news/{id}`
-- `POST /api/news/my-news/{id}/submit` - Gửi bài duyệt
-
-### Category
-- `GET /api/category` - Tất cả danh mục gốc
-- `GET /api/category/all` - Bao gồm danh mục con
-- `GET /api/category/{id}`
-- `GET /api/category/slug/{slug}`
-- `GET /api/category/subcategories/{parentSlug}` - Lấy danh mục con theo slug cha
-- `GET /api/category/{categoryId}/count` - Đếm số bài theo danh mục
-
-### Notifications
-- `GET /api/notifications` - Lấy thông báo của tôi
-- `GET /api/notifications/unread-count` - Đếm chưa đọc
-- `POST /api/notifications/{id}/read` - Đánh dấu đã đọc
-
-### Admin
-- News: `GET/POST/PUT/DELETE /api/admin/news`, `PUT /api/admin/news/{id}/status`
-- Users: `GET/POST/PUT/DELETE /api/admin/users`, `PATCH /api/admin/users/{id}/status`
-- Category: `POST/PUT/DELETE /api/admin/category`
-
-### Auth & Profile
-- `POST /api/auth/signin` - Đăng nhập
-- `POST /api/auth/signup` - Đăng ký
-- `GET /api/auth/me` - Lấy thông tin người dùng hiện tại
-- `POST /api/auth/logout` - Đăng xuất
-- `PUT /api/auth/me` - Cập nhật hồ sơ của tôi
-- `GET /api/oauth2/callback` - Đăng nhập Google (redirect handler)
-
-### Authentication
-- Sử dụng JWT token
-- Token được gửi trong header: `Authorization: Bearer <token>`
 
 ## 🗂️ Cấu trúc Database
 
@@ -332,8 +247,7 @@ Lưu ý: Toàn bộ endpoint đều có tiền tố `/api`.
 - Có phân quyền USER và ADMIN
 
 ## 🔒 Bảo mật & Secrets
-- Không commit secrets (JWT secret, Google OAuth client id/secret) vào git.
-- Sử dụng biến môi trường. Với Docker Compose, đặt trong file `.env` (đã bị ignore).
+
 - Cung cấp `.env.example`; người dùng tự điền `.env` trước khi chạy.
 
 

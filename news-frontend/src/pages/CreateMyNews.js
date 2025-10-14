@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../components/AuthContext';
 import { newsAPI } from '../services/api';
+import { toast } from 'react-toastify';
 
 const CreateMyNews = () => {
   const [formData, setFormData] = useState({
@@ -11,18 +11,20 @@ const CreateMyNews = () => {
     categoryId: '',
     imageUrl: '',
     published: false,
-    featured: false
+    featured: false,
+    tags: []
   });
   const [categories, setCategories] = useState([]);
+  const [tags, setTags] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchCategories();
+    fetchTags();
   }, []);
 
   const fetchCategories = async () => {
@@ -34,6 +36,15 @@ const CreateMyNews = () => {
     }
   };
 
+  const fetchTags = async () => {
+    try {
+      const response = await newsAPI.getAllTags();
+      setTags(response.data || []);
+    } catch (err) {
+      console.error('Error fetching tags:', err);
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -42,11 +53,34 @@ const CreateMyNews = () => {
     }));
   };
 
+  const handleTagsChange = (e) => {
+    const selected = Array.from(e.target.selectedOptions).map(opt => opt.value);
+    setFormData(prev => ({
+      ...prev,
+      tags: selected
+    }));
+  };
+
+  const handleToggleTag = (tagName) => {
+    setFormData(prev => {
+      // Nếu tag đã được chọn thì bỏ chọn, nếu chưa chọn thì thêm vào
+      if (prev.tags.includes(tagName)) {
+        // Bỏ chọn: lọc ra tag này
+        return { ...prev, tags: prev.tags.filter(name => name !== tagName) };
+      } else {
+        // Chọn: thêm tag này vào
+        return { ...prev, tags: [...prev.tags, tagName] };
+      }
+    });
+  };
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.title || !formData.content || !formData.categoryId) {
-      setError('Vui lòng điền đầy đủ thông tin bắt buộc');
+    if (!formData.title || !formData.content || !formData.categoryId || !formData.tags.length) {
+      // setError('Vui lòng điền đầy đủ thông tin bắt buộc');
+      toast.warning('Vui lòng điền đầy đủ thông tin bắt buộc');
       return;
     }
 
@@ -57,7 +91,8 @@ const CreateMyNews = () => {
       console.log("formData", formData);
       const response = await newsAPI.createMyNews(formData);
       console.log("response", response);
-      setSuccess('Tạo bài viết thành công!');
+      // setSuccess('Tạo bài viết thành công!');
+      toast.success('Tạo bài viết thành công');
       
       // Reset form
       setFormData({
@@ -67,16 +102,18 @@ const CreateMyNews = () => {
         categoryId: '',
         imageUrl: '',
         published: false,
-        featured: false
+        featured: false,
+        tags: []
       });
 
       // Chuyển đến trang My News sau 2 giây
-      setTimeout(() => {
+      // setTimeout(() => {
         navigate('/my-news');
-      }, 2000);
+      // }, 2000);
 
     } catch (err) {
       setError('Có lỗi xảy ra khi tạo bài viết: ' + (err.response?.data?.error || err.message));
+      toast.error('Tạo bài viết thất bại');
     } finally {
       setLoading(false);
     }
@@ -223,6 +260,31 @@ const CreateMyNews = () => {
                         />
                       )}
                     </div>
+
+                    {/* Tags */}
+                    <div className="mb-3">
+                      <label htmlFor="tags" className="form-label">
+                        Tags <span className="text-danger">*</span>
+                      </label>
+
+                      <div className="d-flex flex-wrap gap-2">
+                        {tags.map(tag => {
+                          const selected = formData.tags.includes(tag.name);
+                          {console.log("selected", selected)};
+                          return (
+                            <button
+                              key={tag.id}
+                              type="button"
+                              className={`btn btn-sm ${selected ? 'btn-primary' : 'btn-outline-secondary'}`}
+                              onClick={() => handleToggleTag(tag.name)}
+                            >
+                              {tag.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
 
                     {/* Submit Button */}
                     <div className="d-grid">

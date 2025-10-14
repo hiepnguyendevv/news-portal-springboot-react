@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../components/AuthContext';
 import { newsAPI } from '../../services/api';
+import { toast } from 'react-toastify';
 
 const CreateNews = () => {
   const [formData, setFormData] = useState({
@@ -11,11 +12,13 @@ const CreateNews = () => {
     categoryId: '',
     imageUrl: '',
     published: false,
-    featured: false
+    featured: false,
+    tags: []
   });
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [tags, setTags] = useState([]); 
   const [success, setSuccess] = useState('');
 
   const { user } = useAuth();
@@ -23,15 +26,24 @@ const CreateNews = () => {
 
   useEffect(() => {
     fetchCategories();
-  }, []);
+    fetchTags();
+    }, []);
 
   const fetchCategories = async () => {
     try {
       const response = await newsAPI.getAllCategoryIncludingChildren();
       setCategories(response.data);
-      console.log(response.data);
+      // removed noisy console.log to avoid render-time noise
     } catch (err) {
       console.error('Error fetching categories:', err);
+    }
+  };
+  const fetchTags = async () => {
+    try {
+      const response = await newsAPI.getAllTags();
+      setTags(response.data || []);
+    } catch (err) {
+      console.error('Error fetching tags:', err);
     }
   };
 
@@ -43,10 +55,23 @@ const CreateNews = () => {
     }));
   };
 
+  const handleToggleTag = (tagName) => {
+
+    setFormData(prev => {
+      // Nếu tag đã được chọn thì bỏ chọn, nếu chưa chọn thì thêm vào
+      if (prev.tags.includes(tagName)) {
+        // Bỏ chọn: lọc ra tag này
+        return { ...prev, tags: prev.tags.filter(name => name !== tagName) };
+      } else {
+        // Chọn: thêm tag này vào
+        return { ...prev, tags: [...prev.tags, tagName] };
+      }
+    });
+  };
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.title || !formData.content || !formData.categoryId) {
+    if (!formData.title || !formData.content || !formData.categoryId || !formData.tags.length) {
       setError('Vui lòng điền đầy đủ thông tin bắt buộc');
       return;
     }
@@ -61,11 +86,12 @@ const CreateNews = () => {
         authorId: user.id
       };
       
-      console.log(newsData);
+      // avoid logging large objects during render/submit in production
       const response = await newsAPI.createNews(newsData);
-      setSuccess('Tạo tin tức thành công!');
+      // setSuccess('Tạo tin tức thành công!');
+      toast.success('Tạo tin tức thành công');
       
-      // Reset form
+      // Reset form giống CreateMyNews.js
       setFormData({
         title: '',
         summary: '',
@@ -73,16 +99,17 @@ const CreateNews = () => {
         categoryId: '',
         imageUrl: '',
         published: false,
-        featured: false
+        featured: false,
+        tags: []
       });
 
-      // Chuyển đến trang quản lý tin tức sau 2 giây
-      setTimeout(() => {
-        navigate('/admin/news');
-      }, 2000);
+      // Điều hướng
+      navigate('/admin/news');
 
     } catch (err) {
-      setError('Có lỗi xảy ra khi tạo tin tức: ' + (err.response?.data?.message || err.message));
+      // setError('Có lỗi xảy ra khi tạo tin tức: ' + (err.response?.data?.message || err.message));
+      toast.error('Có lỗi xảy ra khi tạo tin tức');
+
     } finally {
       setLoading(false);
     }
@@ -122,7 +149,7 @@ const CreateNews = () => {
 
           <div className="card">
             <div className="card-header">
-              <h5 className="mb-0">Thông tin tin tức</h5>
+              <h5 className="mb-0">Thông tin tin tức  </h5>
             </div>
             <div className="card-body">
               <form onSubmit={handleSubmit}>
@@ -262,8 +289,24 @@ const CreateNews = () => {
                       </div>
                     </div>
 
+                    <div className="d-flex flex-wrap gap-2">
+                        {tags.map(tag => {
+                          const selected = formData.tags.includes(tag.name);
+                          return (
+                            <button
+                              key={tag.id}
+                              type="button"
+                              className={`btn btn-sm ${selected ? 'btn-primary' : 'btn-outline-secondary'}`}
+                              onClick={() => handleToggleTag(tag.name)}
+                            >
+                              {tag.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+
                     {/* Submit Button */}
-                    <div className="d-grid">
+                    <div className="d-grid mt-2">
                       <button
                         type="submit"
                         className="btn btn-primary"

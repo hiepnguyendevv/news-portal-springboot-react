@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import BookmarkButton from './BookmarkButton';
 
 const NewsCard = ({ news }) => {
   const formatDate = (dateString) => {
@@ -58,6 +59,9 @@ const NewsCard = ({ news }) => {
               <i className="fas fa-clock ms-3 me-1"></i>
               {formatDate(news.createdAt)}
             </small>
+            <div className="mt-2">
+              <BookmarkButton newsId={news.id} size="sm" />
+            </div>
           </div>
         </div>
       </div>

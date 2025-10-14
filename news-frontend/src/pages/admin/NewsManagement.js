@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../components/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { newsAPI } from '../../services/api';
 import ConfirmModal from '../../components/ConfirmModal';
-
+import Pagination from '../../components/Pagination';
+import AdminNewsHeader from '../../components/admin/AdminNewsHeader';
+import AdminNewsFilters from '../../components/admin/AdminNewsFilters';
+import AdminNewsTable from '../../components/admin/AdminNewsTable';
+import AdminRejectModal from '../../components/admin/AdminRejectModal';
+import { toast } from 'react-toastify';
 const NewsManagement = () => {
   const [news, setNews] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [filter, setFilter] = useState('all'); // all, published, draft, pending, featured
   const [categoryFilter, setCategoryFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,64 +20,110 @@ const NewsManagement = () => {
   const [selectedNewsId, setSelectedNewsId] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false); 
   const [sortBy, setSortBy] = useState('date');
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [showBulkApproveModal, setShowBulkApproveModal] = useState(false);
+  const PAGE_SIZE = 20;
 
-  const { user } = useAuth();
   const navigate = useNavigate();
 
+  // Đọc URL params 1 lần khi mount để đồng bộ state
   useEffect(() => {
-    fetchNews();
-    fetchCategories();
-  }, [filter, categoryFilter,sortBy]);
+    const params = new URLSearchParams(window.location.search);
+    const f = params.get('filter');
+    const c = params.get('category');
+    const q = params.get('q');
+    const s = params.get('sortBy');
+    const p = params.get('page');
 
-  const fetchNews = async () => {
+    if (f) setFilter(f);
+    if (c) setCategoryFilter(c);
+    if (q) setSearchTerm(q);
+    if (s) setSortBy(s);
+    if (p) setPage(Math.max(0, parseInt(p, 10) || 0));
+  }, []);
+
+  useEffect(() => {
+    fetchNews(0);
+    fetchCategories();
+    setPage(0);
+  }, [filter, categoryFilter,sortBy, searchTerm]);
+
+  // Cập nhật URL khi filter/sort/page/search thay đổi mà không navigate
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (filter && filter !== 'all') params.set('filter', filter);
+    if (categoryFilter) params.set('category', categoryFilter);
+    if (searchTerm) params.set('q', searchTerm);
+    if (sortBy && sortBy !== 'date') params.set('sortBy', sortBy);
+    if (page && page > 0) params.set('page', String(page));
+
+    const query = params.toString();
+    const newUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+    window.history.replaceState({}, '', newUrl);
+  }, [filter, categoryFilter, searchTerm, sortBy, page]);
+
+  const fetchNews = async (targetPage = page) => {
     try {
       setLoading(true);
-      let response;
-   // Nếu sort theo view count, chỉ lấy tin published và không filter thêm
-   if (sortBy === 'desc') {
-    response = await newsAPI.getNewsByViewCountDesc();
-  } else if (sortBy === 'asc') {
-    response = await newsAPI.getNewsByViewCountAsc();
-  } else {
-    response = await newsAPI.getAllNews();
-  }
-  
-  let filteredNews = response.data;
+      const response = await newsAPI.adminSearchNews({
+        page: targetPage,
+        size: PAGE_SIZE,
+        filter,
+        category: categoryFilter,
+        q: searchTerm,
+        sortBy
+      });
+      const pageData = response.data;
 
+      let items = pageData.content || [];
 
-      // Filter by status
+      // Client-side filters (tạm thời nếu server chưa hỗ trợ)
       if (filter === 'published') {
-        filteredNews = filteredNews.filter(item => (item.status === 'PUBLISHED') || (item.status == null && item.published === true));
+        items = items.filter(item => (item.status === 'PUBLISHED') || (item.status == null && item.published === true));
       } else if (filter === 'draft') {
-        filteredNews = filteredNews.filter(item => (item.status === 'DRAFT') || (item.status == null && item.published === false));
+        items = items.filter(item => (item.status === 'DRAFT') || (item.status == null && item.published === false));
       } else if (filter === 'pending') {
-        filteredNews = filteredNews.filter(item => item.status === 'PENDING_REVIEW');
+        items = items.filter(item => item.status === 'PENDING_REVIEW');
       } else if (filter === 'featured') {
-        filteredNews = filteredNews.filter(item => item.featured === true);
+        items = items.filter(item => item.featured === true);
       }
 
-      // Filter by category
       if (categoryFilter) {
-        filteredNews = filteredNews.filter(item => 
-          item.category?.id.toString() === categoryFilter
-        );
+        items = items.filter(item => item.category?.id?.toString() === categoryFilter);
       }
 
-      // Filter by search term
       if (searchTerm) {
-        filteredNews = filteredNews.filter(item => 
-          item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.content.toLowerCase().includes(searchTerm.toLowerCase())
+        const q = searchTerm.toLowerCase();
+        items = items.filter(item =>
+          (item.title || '').toLowerCase().includes(q) ||
+          (item.content || '').toLowerCase().includes(q)
         );
       }
 
-      setNews(filteredNews);
+      if (sortBy === 'desc') {
+        items = [...items].sort((a,b) => (b.viewCount || 0) - (a.viewCount || 0));
+      } else if (sortBy === 'asc') {
+        items = [...items].sort((a,b) => (a.viewCount || 0) - (b.viewCount || 0));
+      }
+
+      setNews(items);
+      setTotalPages(pageData.totalPages || 0);
+      setPage(pageData.number || targetPage);
     } catch (err) {
-      setError('Không thể tải danh sách tin tức');
+      // setError('Không thể tải danh sách tin tức');
+      toast.error('Không thể tải danh sách tin tức');
       console.error('Error fetching news:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (newPage) => {
+    setPage(newPage);
+    fetchNews(newPage);
   };
 
   const fetchCategories = async () => {
@@ -97,9 +145,11 @@ const NewsManagement = () => {
     try {
       await newsAPI.deleteNews(selectedNewsId);
       setNews(news.filter(item => item.id !== selectedNewsId));
-      setSuccess('Xóa tin tức thành công!');
+      // setSuccess('Xóa tin tức thành công!');
+      toast.success('Xóa tin tức thành công');
     } catch (err) {
-      setError('Lỗi khi xóa tin tức: ' + err.message);
+      // setError('Lỗi khi xóa tin tức: ' + err.message);
+      toast.error('Lỗi khi xóa tin tức');
     } finally {
       setShowDeleteModal(false);
       setSelectedNewsId(null);
@@ -109,15 +159,16 @@ const NewsManagement = () => {
   const handleTogglePublish = async (newsId, currentStatus) => {
     try {
 
- 
 
       await newsAPI.updateNewsStatus(newsId, { published: !currentStatus });
       setNews(news.map(item => 
         item.id === newsId ? { ...item, published: !currentStatus } : item
       ));
-      setSuccess(`${!currentStatus ? 'Xuất bản' : 'Hủy xuất bản'} thành công!`);
+      // setSuccess(`${!currentStatus ? 'Xuất bản' : 'Hủy xuất bản'} thành công!`);
+      toast.success(`${!currentStatus ? 'Xuất bản' : 'Hủy xuất bản'} thành công`);
     } catch (err) {
-      setError('Lỗi khi cập nhật trạng thái: ' + err.message);
+      // setError('Lỗi khi cập nhật trạng thái: ' + err.message);
+      toast.error('Lỗi khi cập nhật trạng thái');
     }
   };
 
@@ -129,9 +180,11 @@ const NewsManagement = () => {
       setNews(news.map(item => 
         item.id === newsId ? { ...item, featured: !currentStatus } : item
       ));
-      setSuccess(`${!currentStatus ? 'Đặt' : 'Bỏ'} tin nổi bật thành công!`);
+      // setSuccess(`${!currentStatus ? 'Đặt' : 'Bỏ'} tin nổi bật thành công!`);
+      toast.success(`${!currentStatus ? 'Đặt' : 'Bỏ'} tin nổi bật thành công`);
     } catch (err) {
-      setError('Lỗi khi cập nhật trạng thái: ' + err.message);
+      // setError('Lỗi khi cập nhật trạng thái: ' + err.message);
+      toast.error('Lỗi khi cập nhật trạng thái');
     }
   };
 
@@ -170,10 +223,79 @@ const NewsManagement = () => {
       setNews(news.map(item => 
         item.id === selectedNewsId ? { ...item, published: false, status: 'DRAFT', reviewNote: rejectNote || '' } : item
       ));
-      setSuccess('Đã từ chối bài viết và chuyển về bản nháp');
+      // setSuccess('Đã từ chối bài viết và chuyển về bản nháp');
+      toast.success('Đã từ chối bài viết và chuyển về bản nháp');
       handleCloseReject();
     } catch (err) {
-      setError('Lỗi khi từ chối bài viết: ' + err.message);
+      // setError('Lỗi khi từ chối bài viết: ' + err.message);
+      toast.error('Lỗi khi từ chối bài viết');
+    }
+  };
+
+  // Bulk action handlers
+  const handleSelectItem = (itemId, checked) => {
+    if (checked) {
+      setSelectedItems(prev => [...prev, itemId]);
+    } else {
+      setSelectedItems(prev => prev.filter(id => id !== itemId));
+    }
+  };
+
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      setSelectedItems(news.map(item => item.id));
+    } else {
+      setSelectedItems([]);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedItems.length === 0) {
+      toast.warning('Vui lòng chọn ít nhất một tin tức để xóa');
+      return;
+    }
+    setShowBulkDeleteModal(true);
+  };
+
+  const handleBulkApprove = () => {
+    if (selectedItems.length === 0) {
+      toast.warning('Vui lòng chọn ít nhất một tin tức để phê duyệt');
+      return;
+    }
+    setShowBulkApproveModal(true);
+  };
+
+  const handleConfirmBulkDelete = async () => {
+    try {
+      console.log('Deleting news IDs:', selectedItems);
+      const response = await newsAPI.bulkDeleteNews(selectedItems);
+      console.log('Delete response:', response);
+      setNews(news.filter(item => !selectedItems.includes(item.id)));
+      toast.success(response.data.message);
+      setSelectedItems([]);
+    } catch (err) {
+      console.error('Error deleting news:', err);
+      console.error('Error response:', err.response);
+      toast.error('Lỗi khi xóa tin tức: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setShowBulkDeleteModal(false);
+    }
+  };
+
+  const handleConfirmBulkApprove = async () => {
+    try {
+      const response = await newsAPI.bulkApproveNews(selectedItems);
+      setNews(news.map(item => 
+        selectedItems.includes(item.id) 
+          ? { ...item, published: true, status: 'PUBLISHED' } 
+          : item
+      ));
+      toast.success(response.data.message);
+      setSelectedItems([]);
+    } catch (err) {
+      toast.error('Lỗi khi phê duyệt tin tức');
+    } finally {
+      setShowBulkApproveModal(false);
     }
   };
 
@@ -189,188 +311,77 @@ const NewsManagement = () => {
         onConfirm={handleConfirmDelete}
         onClose={() => { setShowDeleteModal(false); setSelectedNewsId(null); }}
       />
-      {showRejectModal && (
-        <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">
-                  <i className="fas fa-times-circle me-2 text-danger"></i>
-                  Từ chối bài viết
-                </h5>
-                <button type="button" className="btn-close" aria-label="Close" onClick={handleCloseReject}></button>
-              </div>
-              <div className="modal-body">
-                <label htmlFor="rejectNote" className="form-label">Lý do từ chối (tùy chọn)</label>
-                <textarea
-                  id="rejectNote"
-                  className="form-control"
-                  rows="4"
-                  placeholder="Nhập lý do..."
-                  value={rejectNote}
-                  onChange={(e) => setRejectNote(e.target.value)}
-                ></textarea>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={handleCloseReject}>Hủy</button>
-                <button type="button" className="btn btn-danger" onClick={handleConfirmReject}>
-                  <i className="fas fa-times me-1"></i>
-                  Từ chối
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        show={showBulkDeleteModal}
+        title="Xóa nhiều tin tức"
+        message={`Bạn có chắc chắn muốn xóa ${selectedItems.length} tin tức đã chọn? Hành động này không thể hoàn tác.`}
+        confirmText="Xóa tất cả"
+        cancelText="Hủy"
+        confirmBtnClass="btn-danger"
+        onConfirm={handleConfirmBulkDelete}
+        onClose={() => setShowBulkDeleteModal(false)}
+      />
+      <ConfirmModal
+        show={showBulkApproveModal}
+        title="Phê duyệt nhiều tin tức"
+        message={`Bạn có chắc chắn muốn phê duyệt ${selectedItems.length} tin tức đã chọn?`}
+        confirmText="Phê duyệt tất cả"
+        cancelText="Hủy"
+        confirmBtnClass="btn-success"
+        onConfirm={handleConfirmBulkApprove}
+        onClose={() => setShowBulkApproveModal(false)}
+      />
+      <AdminRejectModal
+        show={showRejectModal}
+        note={rejectNote}
+        setNote={setRejectNote}
+        onClose={handleCloseReject}
+        onConfirm={handleConfirmReject}
+      />
       <div className="row">
         <div className="col-12">
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <h2>
-              <i className="fas fa-newspaper me-2"></i>
-              Quản lý tin tức
-            </h2>
-            <div>
-              <button 
-                className="btn btn-primary me-2"
-                onClick={() => navigate('/admin/news/create')}
-              >
-                <i className="fas fa-plus me-1"></i>
-                Tạo tin tức mới
-              </button>
-              <button 
-                className="btn btn-secondary"
-                onClick={() => navigate('/admin')}
-              >
-                <i className="fas fa-arrow-left me-1"></i>
-                Quay lại
-              </button>
-            </div>
-          </div>
+          <AdminNewsHeader
+            onCreate={() => navigate('/admin/news/create')}
+            onBack={() => navigate('/admin')}
+          />
 
-          {error && (
-            <div className="alert alert-danger" role="alert">
-              <i className="fas fa-exclamation-circle me-2"></i>
-              {error}
-            </div>
-          )}
-
-          {success && (
-            <div className="alert alert-success" role="alert">
-              <i className="fas fa-check-circle me-2"></i>
-              {success}
-            </div>
-          )}
-
-          {/* Filters */}
-          <div className="card mb-4">
-            <div className="card-body">
-              <div className="row">
-                {/* Status Filter */}
-                <div className="col-md-3">
-                  <label className="form-label">Trạng thái</label>
-                  <ul className="nav nav-pills flex-column">
-                    <li className="nav-item">
-                      <button 
-                        className={`nav-link ${filter === 'all' ? 'active' : ''}`}
-                        onClick={() => setFilter('all')}
-                      >
-                        Tất cả
-                      </button>
-                    </li>
-                    <li className="nav-item">
-                      <button 
-                        className={`nav-link ${filter === 'published' ? 'active' : ''}`}
-                        onClick={() => setFilter('published')}
-                      >
-                        Đã xuất bản
-                      </button>
-                    </li>
-                    <li className="nav-item">
-                      <button 
-                        className={`nav-link ${filter === 'draft' ? 'active' : ''}`}
-                        onClick={() => setFilter('draft')}
-                      >
-                        Bản nháp
-                      </button>
-                    </li>
-                    <li className="nav-item">
-                      <button 
-                        className={`nav-link ${filter === 'pending' ? 'active' : ''}`}
-                        onClick={() => setFilter('pending')}
-                      >
-                        Đang chờ duyệt
-                      </button>
-                    </li>
-                    <li className="nav-item">
-                      <button 
-                        className={`nav-link ${filter === 'featured' ? 'active' : ''}`}
-                        onClick={() => setFilter('featured')}
-                      >
-                        Nổi bật
-                      </button>
-                    </li>
-                  </ul>
-                </div>
-
-                {/* Category Filter */}
-                <div className="col-md-3">
-                  <label htmlFor="categoryFilter" className="form-label">Danh mục</label>
-                  <select
-                    className="form-select"
-                    id="categoryFilter"
-                    value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value)}
-                  >
-                    <option value="">Tất cả danh mục</option>
-                    {categories.map(category => (
-                      <option key={category.id} value={category.id}>
-                        {'--'.repeat(category.level)} {category.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="mt-3">
-                    <label htmlFor="sortBy" className="form-label">Sắp xếp theo</label>
-                    <select  className='form-select'
-                    value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                      <option value="date">Mới nhất</option>
-                      <option value="desc">Xem nhiều nhất</option>
-                      <option value="asc">Xem ít nhất</option>
-                    </select>
-                </div>
-                  
-                </div>
-
-                
-
-                {/* Search */}
-                <div className="col-md-6">
-                  <label htmlFor="search" className="form-label">Tìm kiếm</label>
-                  <div className="input-group">
-                    <input
-                      type="text"
-                      className="form-control"
-                      id="search"
-                      placeholder="Tìm theo tiêu đề, nội dung..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                    <button 
-                      className="btn btn-outline-secondary"
-                      onClick={fetchNews}
-                    >
-                      <i className="fas fa-search"></i>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <AdminNewsFilters
+            filter={filter}
+            setFilter={setFilter}
+            categoryFilter={categoryFilter}
+            setCategoryFilter={setCategoryFilter}
+            categories={categories}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            onSearch={() => fetchNews(0)}
+          />
           
 
-          {/* News Table */}
           <div className="card">
-            <div className="card-header">
+            <div className="card-header d-flex justify-content-between align-items-center">
               <h5 className="mb-0">Danh sách tin tức ({news.length})</h5>
+              {selectedItems.length > 0 && (
+                <div className="btn-group">
+                  <button 
+                    className="btn btn-success btn-sm"
+                    onClick={handleBulkApprove}
+                    title="Phê duyệt tất cả đã chọn"
+                  >
+                    <i className="fas fa-check me-1"></i>
+                    Phê duyệt ({selectedItems.length})
+                  </button>
+                  <button 
+                    className="btn btn-danger btn-sm"
+                    onClick={handleBulkDelete}
+                    title="Xóa tất cả đã chọn"
+                  >
+                    <i className="fas fa-trash me-1"></i>
+                    Xóa ({selectedItems.length})
+                  </button>
+                </div>
+              )}
             </div>
             <div className="card-body">
               {loading ? (
@@ -379,124 +390,29 @@ const NewsManagement = () => {
                     <span className="visually-hidden">Đang tải...</span>
                   </div>
                 </div>
-              ) : news.length > 0 ? (
-                <div className="table-responsive">
-                  <table className="table table-hover">
-                    <thead>
-                      <tr>
-                        <th>ID</th>
-                        <th>Tiêu đề</th>
-                        <th>Danh mục</th>
-                        <th>Tác giả</th>
-                        <th>Trạng thái</th>
-                        <th>Lượt xem</th>
-                        <th>Ngày tạo</th>
-                        <th>Thao tác</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {news.map(item => (
-                        <tr key={item.id}>
-                          <td>{item.id}</td>
-                          <td>
-                            <div className="d-flex align-items-center">
-                              {item.imageUrl && (
-                                <img 
-                                  src={item.imageUrl} 
-                                  alt=""
-                                  className="me-2"
-                                  style={{ width: '50px', height: '30px', objectFit: 'cover' }}
-                                />
-                              )}
-                              <div>
-                                <Link 
-                                  to={`/${item.slug}-${item.id}`}
-                                  className="text-decoration-none fw-bold"
-                                >
-                                  {item.title}
-                                </Link>
-                                <br />
-                                <small className="text-muted">{item.summary}</small>
-                              </div>
-                            </div>
-                          </td>
-                          <td>
-                            <span className="badge bg-info">
-                              {item.category?.name || 'Chưa phân loại'}
-                            </span>
-                          </td>
-                          <td>{item.author?.fullName || item.author?.username}</td>
-                          <td>{getStatusBadge(item.status, item.published, item.featured)}</td>
-                          <td>
-                            <i className="fas fa-eye me-1"></i>
-                            {item.viewCount || 0}
-                          </td>
-                          <td>{new Date(item.createdAt).toLocaleDateString('vi-VN')}</td>
-                          <td>
-                            <div className="btn-group btn-group-sm">
-                              <button
-                                className="btn btn-outline-info"
-                                onClick={() => navigate(`/admin/news/edit/${item.id}`)}
-                                title="Chỉnh sửa"
-                              >
-                                <i className="fas fa-edit"></i>
-                              </button>
-                              
-                              <button
-                                className={`btn btn-outline-${item.published ? 'warning' : 'success'}`}
-                                onClick={() => handleTogglePublish(item.id, item.published)}
-                                title={item.published ? 'Hủy xuất bản' : 'Xuất bản'}
-                              >
-                                <i className={`fas fa-${item.published ? 'eye-slash' : 'eye'}`}></i>
-                              </button>
-
-                              {item.status === 'PENDING_REVIEW' && (
-                                <button
-                                  className="btn btn-outline-danger"
-                                  onClick={() => handleReject(item.id)}
-                                  title="Từ chối"
-                                >
-                                  <i className="fas fa-times"></i>
-                                </button>
-                              )}
-                              
-                              <button
-                                className={`btn btn-outline-${item.featured ? 'secondary' : 'warning'}`}
-                                onClick={() => handleToggleFeatured(item.id, item.featured)}
-                                title={item.featured ? 'Bỏ nổi bật' : 'Đặt nổi bật'}
-                              >
-                                <i className={`fas fa-${item.featured ? 'star-half-alt' : 'star'}`}></i>
-                              </button>
-                              
-                              <button
-                                className="btn btn-outline-danger"
-                                onClick={() => openDeleteNews(item.id)}
-                                title="Xóa"
-                              >
-                                <i className="fas fa-trash"></i>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
               ) : (
-                <div className="text-center py-4">
-                  <i className="fas fa-newspaper fa-3x text-muted mb-3"></i>
-                  <h5 className="text-muted">Không có tin tức nào</h5>
-                  <button 
-                    className="btn btn-primary mt-2"
-                    onClick={() => navigate('/admin/news/create')}
-                  >
-                    <i className="fas fa-plus me-1"></i>
-                    Tạo tin tức đầu tiên
-                  </button>
-                </div>
+                <AdminNewsTable
+                  items={news}
+                  onEdit={(id) => navigate(`/admin/news/edit/${id}`)}
+                  onTogglePublish={handleTogglePublish}
+                  onToggleFeatured={handleToggleFeatured}
+                  onDelete={openDeleteNews}
+                  onReject={handleReject}
+                  getStatusBadge={getStatusBadge}
+                  selectedItems={selectedItems}
+                  onSelectItem={handleSelectItem}
+                  onSelectAll={handleSelectAll}
+                />
               )}
             </div>
           </div>
+          {totalPages > 1 && (
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onChange={handlePageChange}
+            />
+          )}
         </div>
       </div>
     </div>

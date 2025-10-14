@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const CategoryTable = ({ categories, onDelete }) => {
+const CategoryTable = ({ categories, onDelete, selectedItems, onSelectItem, onSelectAll }) => {
   const navigate = useNavigate();
 
   const getStatusBadge = (status) => {
@@ -21,6 +21,14 @@ const CategoryTable = ({ categories, onDelete }) => {
       <table className="table table-hover">
         <thead className="table-dark">
           <tr>
+            <th>
+              <input 
+                type="checkbox" 
+                checked={selectedItems.length === categories.length && categories.length > 0}
+                onChange={(e) => onSelectAll(e.target.checked)}
+                className="form-check-input"
+              />
+            </th>
             <th>STT</th>
             <th>Tên danh mục</th>
             <th>Mô tả</th>
@@ -34,6 +42,14 @@ const CategoryTable = ({ categories, onDelete }) => {
         <tbody>
           {categories.map((category, index) => (
             <tr key={category.id}>
+              <td>
+                <input 
+                  type="checkbox" 
+                  checked={selectedItems.includes(category.id)}
+                  onChange={(e) => onSelectItem(category.id, e.target.checked)}
+                  className="form-check-input"
+                />
+              </td>
               <td>{index + 1}</td>
               <td>
                 <strong>{getLevelIndent(category.level)} {category.name}</strong>

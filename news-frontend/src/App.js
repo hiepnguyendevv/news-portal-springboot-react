@@ -2,6 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './components/AuthContext';
 import Navbar from './components/Navbar';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 import Home from './pages/Home';
 import NewsDetail from './pages/NewsDetail';
@@ -24,10 +26,12 @@ import ProtectedRoute from './components/ProtectedRoute';
 import EditNews from './pages/admin/EditNews';
 import AdminRoute from './components/AdminRoute';
 import GuestRoute from './components/GuestRoute';
+import CommentManagement from './pages/admin/CommentManagement';
 
 import MyNews from './pages/MyNews';
 import CreateMyNews from './pages/CreateMyNews';
 import EditMyNews from './pages/EditMyNews';
+import SavedNews from './pages/SavedNews';
 import OAuth2Callback from './components/OAuth2Callback';
 
 function App() {
@@ -83,6 +87,12 @@ function App() {
               </ProtectedRoute>
             } />
 
+            <Route path="/saved" element={
+              <ProtectedRoute>
+                <SavedNews />
+              </ProtectedRoute>
+            } />
+
             <Route path="/admin" element={
               <AdminRoute>
                 <Admin />
@@ -102,6 +112,11 @@ function App() {
               </AdminRoute>
             } />
             
+            <Route path="/admin/comments" element={
+              <AdminRoute>
+                <CommentManagement />
+              </AdminRoute>} 
+            />
             <Route path="/admin/news/edit/:id" element={
               <AdminRoute>
                 <EditNews />
@@ -145,6 +160,18 @@ function App() {
             } />
           </Routes>
         </main>
+        <ToastContainer
+          position="bottom-right"
+          autoClose={2000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+        />
       </Router>
     </AuthProvider>
   );

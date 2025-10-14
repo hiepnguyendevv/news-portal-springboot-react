@@ -21,6 +21,7 @@ const Login = () => {
     // Redirect to Spring Boot OAuth2 endpoint
     window.location.href = 'http://localhost:8080/oauth2/authorization/google';
   };
+
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -161,9 +162,9 @@ const Login = () => {
                     Đăng ký ngay
                   </Link>
                 </p>
-                <Link to="/forgot-password" className="text-muted small text-decoration-none">
+                {/* <Link to="/forgot-password" className="text-muted small text-decoration-none">
                   Quên mật khẩu?
-                </Link>
+                </Link> */}
               </div>
             </div>
           </div>

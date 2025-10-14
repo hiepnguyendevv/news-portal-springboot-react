@@ -66,7 +66,7 @@ const Category = () => {
       <nav aria-label="breadcrumb">
         <ol className="breadcrumb">
           <li className="breadcrumb-item">
-            <Link to="/">Trang chủ</Link>
+            <Link to="/" className="text-decoration-none">Trang chủ</Link>
           </li>
           <li className="breadcrumb-item active">
             {categoryInfo?.name || decodeURIComponent(category)}

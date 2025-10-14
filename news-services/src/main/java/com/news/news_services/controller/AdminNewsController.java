@@ -3,21 +3,24 @@ package com.news.news_services.controller;
 import com.news.news_services.entity.Category;
 import com.news.news_services.entity.News;
 import com.news.news_services.entity.User;
-import com.news.news_services.repository.CategoryRepository;
-import com.news.news_services.repository.NewsRepository;
-import com.news.news_services.repository.UserRepository;
+import com.news.news_services.repository.*;
 import com.news.news_services.service.HelperService;
 import com.news.news_services.service.NewsService;
 import com.news.news_services.service.NotificationService;
+import com.news.news_services.service.TagService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
 @RestController
 @RequestMapping("/api/admin/news")
-@CrossOrigin(origins = "http://localhost:3000")
+//@CrossOrigin(origins = "http://localhost:3000")
 public class AdminNewsController {
     @Autowired
     private NewsService newsService;
@@ -28,6 +31,17 @@ public class AdminNewsController {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private BookmarkRepository bookmarkRepository;
+    @Autowired
+    private NewsTagRepository newsTagRepository;
+
+    @Autowired
+    private CommentRepository commentRepository;
+    @Autowired
+    private CommentLikesRepository commentLikesRepository;
+    @Autowired
+    private NotificationRepository notificationRepository;
 
     @Autowired
     private CategoryRepository categoryRepository;
@@ -38,10 +52,31 @@ public class AdminNewsController {
     @Autowired
     private NotificationService notificationService;
 
+    @Autowired
+    private TagService tagService;
     // Lấy tất cả tin tức
     @GetMapping
-    public List<News> getAllNews() {
-        return newsRepository.findAllByOrderByCreatedAtDesc();
+    public Page<News> getAllNews(@RequestParam(defaultValue = "0")int page,
+                                 @RequestParam(defaultValue = "20")int size) {
+        Pageable pageable = PageRequest.of(page,size);
+        return newsRepository.findAllByOrderByCreatedAtDesc(pageable);
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<?> searchAdminNews(@RequestParam(defaultValue = "0") int page,
+                                             @RequestParam(defaultValue = "20") int size,
+                                             @RequestParam(required = false) String filter,
+                                             @RequestParam(required = false) Long category,
+                                             @RequestParam(required = false, name = "q") String q,
+                                             @RequestParam(required = false) String sortBy) {
+        Page<News> result = newsService.adminSearchNews(filter, category, q, sortBy, page, size);
+        return ResponseEntity.ok(Map.of(
+                "content", result.getContent(),
+                "totalPages", result.getTotalPages(),
+                "totalElements", result.getTotalElements(),
+                "page", result.getNumber(),
+                "size", result.getSize()
+        ));
     }
 
     //tạo news
@@ -54,26 +89,32 @@ public class AdminNewsController {
             news.setTitle((String) newsData.get("title"));
             news.setContent((String) newsData.get("content"));
             news.setSummary((String) newsData.get("summary"));
-            news.setSlug(helperService.toSlug(newsData.get("slug").toString()));
+            news.setSlug(helperService.toSlug((String)newsData.get("title")));
             news.setImageUrl((String) newsData.get("imageUrl"));
-            news.setPublished((Boolean) newsData.get("published"));
+            if((Boolean) newsData.get("published")){
+                news.setPublished((Boolean) newsData.get("published"));
+                news.setStatus(News.Status.PUBLISHED);
+            }
             news.setFeatured((Boolean) newsData.get("featured"));
 
             Integer authorId = Integer.valueOf(newsData.get("authorId").toString());
-            if (authorId != null) {
                 User author = userRepository.findById(authorId.longValue())
                         .orElseThrow(() -> new RuntimeException("User not found with id: " + authorId));
                 news.setAuthor(author);
-            }
+
 
             Integer categoryId = Integer.valueOf(newsData.get("categoryId").toString());
-            if (categoryId != null) {
                 Category category = categoryRepository.findById(categoryId.longValue())
                         .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
                 news.setCategory(category);
-            }
+
 
             News savedNews = newsRepository.save(news);
+
+            @SuppressWarnings("unchecked")
+            List<String> tags = (List<String>) newsData.get("tags");
+
+            tagService.assignToNews(news.getId(),tags);
             return ResponseEntity.ok(savedNews);
 
         } catch (Exception e) {
@@ -110,6 +151,10 @@ public class AdminNewsController {
             }
 
             News updatedNews = newsRepository.save(news);
+            @SuppressWarnings("unchecked")
+            List<String> tags = (List<String>) newsData.get("tags");
+
+            tagService.assignToNews(news.getId(),tags);
             return ResponseEntity.ok(updatedNews);
 
         } catch (Exception e) {
@@ -119,17 +164,21 @@ public class AdminNewsController {
     }
 
     // Xóa news
+    @Transactional
     @DeleteMapping("/{id}")
-    String deleteNews(@PathVariable Long id) {
-
-//        Long categoryId = Long.parseLong(id);
-
-        if(!newsRepository.existsById(id)){
+    public ResponseEntity<?> deleteNews(@PathVariable Long id) {
+        if (!newsRepository.existsById(id)) {
             throw new RuntimeException("News not found with id: " + id);
         }
-        System.out.println(id);
+        // 1) Xóa phụ thuộc theo newsId (bulk delete, không lặp)
+        commentLikesRepository.deleteByNewsId(id);
+        commentRepository.deleteByNewsId(id);
+//        newsTagRepository.deleteByNewsId(id);
+        bookmarkRepository.deleteByNewsId(id);
+
+        // 2) Xóa news
         newsRepository.deleteById(id);
-        return "News deleted successfully";
+        return ResponseEntity.ok("News deleted successfully");
     }
 
     //UpdateStatus
@@ -178,6 +227,74 @@ public class AdminNewsController {
                     .body(Map.of("error", "Lỗi khi cập nhật trạng thái: " + e.getMessage()));
         }
     }
+
+    // Bulk delete news
+    @DeleteMapping("/bulk")
+    @Transactional
+    public ResponseEntity<?> bulkDeleteNews(@RequestParam List<Long> newsIds) {
+        try {
+            if (newsIds == null || newsIds.isEmpty()) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Danh sách ID tin tức không được để trống"));
+            }
+
+            int deletedCount = 0;
+            for (Long id : newsIds) {
+                if (newsRepository.existsById(id)) {
+                    // Xóa phụ thuộc
+                    commentLikesRepository.deleteByNewsId(id);
+                    commentRepository.deleteByNewsId(id);
+                    bookmarkRepository.deleteByNewsId(id);
+                    
+                    // Xóa news
+                    newsRepository.deleteById(id);
+                    deletedCount++;
+                }
+            }
+
+            return ResponseEntity.ok(Map.of(
+                "message", "Đã xóa " + deletedCount + " tin tức thành công",
+                "deletedCount", deletedCount
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", "Lỗi khi xóa tin tức: " + e.getMessage()));
+        }
+    }
+
+    // Bulk approve news
+    @PutMapping("/bulk/approve")
+    @Transactional
+    public ResponseEntity<?> bulkApproveNews(@RequestParam List<Long> newsIds) {
+        try {
+            if (newsIds == null || newsIds.isEmpty()) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Danh sách ID tin tức không được để trống"));
+            }
+
+            int approvedCount = 0;
+            for (Long id : newsIds) {
+                News news = newsRepository.findById(id).orElse(null);
+                if (news != null) {
+                    news.setPublished(true);
+                    news.setStatus(News.Status.PUBLISHED);
+                    newsRepository.save(news);
+                    approvedCount++;
+                }
+            }
+
+            return ResponseEntity.ok(Map.of(
+                "message", "Đã phê duyệt " + approvedCount + " tin tức thành công",
+                "approvedCount", approvedCount
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", "Lỗi khi phê duyệt tin tức: " + e.getMessage()));
+        }
+    }
+
 
 
 

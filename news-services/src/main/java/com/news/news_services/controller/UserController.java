@@ -1,11 +1,9 @@
 package com.news.news_services.controller;
 
 import com.news.news_services.entity.User;
-import com.news.news_services.repository.NotificationRepository;
-import com.news.news_services.repository.UserRepository;
+import com.news.news_services.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,22 +16,14 @@ import java.util.Optional;
 public class UserController {
 
     @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private NotificationRepository notificationRepository;
-
+    private UserService userService;
     // Lấy tất cả users
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
         try {
-            List<User> users = userRepository.findAll();
+            List<User> users = userService.getAllUsers();
             return ResponseEntity.ok(users);
         } catch (Exception e) {
-            System.err.println("Error fetching users: " + e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }
@@ -42,14 +32,13 @@ public class UserController {
     @GetMapping("/{id}")
     public ResponseEntity<User> getUserById(@PathVariable Long id) {
         try {
-            Optional<User> user = userRepository.findById(id);
+            Optional<User> user = userService.getUserById(id);
             if (user.isPresent()) {
                 return ResponseEntity.ok(user.get());
             } else {
                 return ResponseEntity.notFound().build();
             }
         } catch (Exception e) {
-            System.err.println("Error fetching user: " + e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }
@@ -61,54 +50,10 @@ public class UserController {
             System.out.println("=== CREATE USER DEBUG ===");
             System.out.println("User data: " + userData);
 
-            // Check if username already exists
-            String username = (String) userData.get("username");
-            if (userRepository.findByUsername(username).isPresent()) {
-                return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Tên đăng nhập đã tồn tại"));
-            }
-
-            // Check if email already exists
-            String email = (String) userData.get("email");
-            if (userRepository.findByEmail(email).isPresent()) {
-                return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Email đã tồn tại"));
-            }
-
-            User user = new User();
-            user.setUsername(username);
-            user.setEmail(email);
-            user.setFullName((String) userData.get("fullName"));
-            
-            // Encode password
-            String password = (String) userData.get("password");
-            if (password != null && !password.isEmpty()) {
-                user.setPassword(passwordEncoder.encode(password));
-            }
-
-            // Set role
-            String role = (String) userData.get("role");
-            if (role != null) {
-                user.setRole(User.UserRole.valueOf(role));
-            } else {
-                user.setRole(User.UserRole.USER);
-            }
-
-            // Set status
-            String status = (String) userData.get("status");
-            if (status != null) {
-                user.setStatus(User.UserStatus.valueOf(status));
-            } else {
-                user.setStatus(User.UserStatus.ACTIVE);
-            }
-
-            User savedUser = userRepository.save(user);
-            System.out.println("✅ User created with ID: " + savedUser.getId());
+            User savedUser = userService.createUser(userData);
             return ResponseEntity.ok(savedUser);
-
         } catch (Exception e) {
-            System.err.println("❌ Error creating user: " + e.getMessage());
-            e.printStackTrace();
+        
             return ResponseEntity.badRequest()
                 .body(Map.of("error", "Lỗi khi tạo người dùng: " + e.getMessage()));
         }
@@ -122,87 +67,52 @@ public class UserController {
             System.out.println("User ID: " + id);
             System.out.println("Update data: " + userData);
 
-            User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
-
-            // Update basic fields
-            if (userData.containsKey("username")) {
-                String newUsername = (String) userData.get("username");
-                // Check if username is being changed and if new username already exists
-                if (!user.getUsername().equals(newUsername) && 
-                    userRepository.findByUsername(newUsername).isPresent()) {
-                    return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Tên đăng nhập đã tồn tại"));
-                }
-                user.setUsername(newUsername);
-            }
-
-            if (userData.containsKey("email")) {
-                String newEmail = (String) userData.get("email");
-                // Check if email is being changed and if new email already exists
-                if (!user.getEmail().equals(newEmail) && 
-                    userRepository.findByEmail(newEmail).isPresent()) {
-                    return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Email đã tồn tại"));
-                }
-                user.setEmail(newEmail);
-            }
-
-            if (userData.containsKey("fullName")) {
-                user.setFullName((String) userData.get("fullName"));
-            }
-
-            // Update password if provided
-            if (userData.containsKey("password")) {
-                String password = (String) userData.get("password");
-                if (password != null && !password.isEmpty()) {
-                    user.setPassword(passwordEncoder.encode(password));
-                }
-            }
-
-            // Update role
-            if (userData.containsKey("role")) {
-                String role = (String) userData.get("role");
-                user.setRole(User.UserRole.valueOf(role));
-            }
-
-            // Update status
-            if (userData.containsKey("status")) {
-                String status = (String) userData.get("status");
-                user.setStatus(User.UserStatus.valueOf(status));
-            }
-
-            User updatedUser = userRepository.save(user);
-            System.out.println("✅ User updated successfully");
+            User updatedUser = userService.updateUser(id, userData);
             return ResponseEntity.ok(updatedUser);
-
         } catch (Exception e) {
-            System.err.println("❌ Error updating user: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.badRequest()
                 .body(Map.of("error", "Lỗi khi cập nhật người dùng: " + e.getMessage()));
         }
     }
 
-    // Xóa user
+
+
+    // Xóa user với cascade delete
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteUser(@PathVariable Long id) {
         try {
-            if (!userRepository.existsById(id)) {
+            if (!userService.userExists(id)) {
                 return ResponseEntity.notFound().build();
             }
 
-
-            notificationRepository.deleteByRecipientId(id);
-            userRepository.deleteById(id);
-            System.out.println("✅ User deleted: " + id);
+            userService.deleteUserWithCascade(id);
+            
             return ResponseEntity.ok()
-                .body(Map.of("message", "Xóa người dùng thành công", "deletedId", id));
+                .body(Map.of("message", "Xóa người dùng và tất cả dữ liệu liên quan thành công"));
 
         } catch (Exception e) {
-            System.err.println("❌ Error deleting user: " + e.getMessage());
             return ResponseEntity.badRequest()
                 .body(Map.of("error", "Lỗi khi xóa người dùng: " + e.getMessage()));
+        }
+    }
+    
+    // Soft delete user (vô hiệu hóa thay vì xóa thật)
+    @DeleteMapping("/{id}/soft")
+    public ResponseEntity<?> softDeleteUser(@PathVariable Long id) {
+        try {
+            if (!userService.userExists(id)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Sử dụng soft delete thay vì xóa thật
+            userService.softDeleteUser(id);
+            
+            return ResponseEntity.ok()
+                .body(Map.of("message", "Vô hiệu hóa người dùng thành công"));
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", "Lỗi khi vô hiệu hóa người dùng: " + e.getMessage()));
         }
     }
 
@@ -210,19 +120,70 @@ public class UserController {
     @PatchMapping("/{id}/status")
     public ResponseEntity<?> updateUserStatus(@PathVariable Long id, @RequestBody Map<String, Object> statusData) {
         try {
-            User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+            User updatedUser = userService.updateUserStatus(id, statusData);
+            return ResponseEntity.ok(updatedUser);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", "Lỗi khi cập nhật trạng thái: " + e.getMessage()));
+        }
+    }
 
-            if (statusData.containsKey("status")) {
-                String status = (String) statusData.get("status");
-                user.setStatus(User.UserStatus.valueOf(status));
+    // Bulk delete users
+    @DeleteMapping("/bulk")
+    public ResponseEntity<?> bulkDeleteUsers(@RequestParam List<Long> userIds) {
+        try {
+            if (userIds == null || userIds.isEmpty()) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Danh sách ID người dùng không được để trống"));
             }
 
-            User updatedUser = userRepository.save(user);
-            return ResponseEntity.ok(updatedUser);
+            int deletedCount = 0;
+            for (Long id : userIds) {
+                if (userService.userExists(id)) {
+                    userService.deleteUserWithCascade(id);
+                    deletedCount++;
+                }
+            }
+
+            return ResponseEntity.ok(Map.of(
+                "message", "Đã xóa " + deletedCount + " người dùng thành công",
+                "deletedCount", deletedCount
+            ));
 
         } catch (Exception e) {
-            System.err.println("❌ Error updating user status: " + e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", "Lỗi khi xóa người dùng: " + e.getMessage()));
+        }
+    }
+
+    // Bulk update user status
+    @PatchMapping("/bulk/status")
+    public ResponseEntity<?> bulkUpdateUserStatus(@RequestParam List<Long> userIds, @RequestParam String status) {
+        try {
+            if (userIds == null || userIds.isEmpty()) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Danh sách ID người dùng không được để trống"));
+            }
+
+            if (status == null || status.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Trạng thái không được để trống"));
+            }
+
+            int updatedCount = 0;
+            for (Long id : userIds) {
+                if (userService.userExists(id)) {
+                    userService.updateUserStatus(id, Map.of("status", status));
+                    updatedCount++;
+                }
+            }
+
+            return ResponseEntity.ok(Map.of(
+                "message", "Đã cập nhật trạng thái " + updatedCount + " người dùng thành công",
+                "updatedCount", updatedCount
+            ));
+
+        } catch (Exception e) {
             return ResponseEntity.badRequest()
                 .body(Map.of("error", "Lỗi khi cập nhật trạng thái: " + e.getMessage()));
         }

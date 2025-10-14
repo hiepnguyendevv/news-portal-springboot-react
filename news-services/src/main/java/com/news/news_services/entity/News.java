@@ -4,7 +4,12 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "news")
@@ -44,6 +49,14 @@ public class News {
     @JoinColumn(name = "category_id",nullable = false)
     private Category category;
 
+    public Set<NewsTag> getNewsTags() {
+        return newsTags;
+    }
+
+    public void setNewsTags(Set<NewsTag> newsTags) {
+        this.newsTags = newsTags;
+    }
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "author_id",nullable = false)
     private User author;
@@ -65,8 +78,13 @@ public class News {
     @Column(name = "review_note", length = 1000)
     private String reviewNote;
 
+
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
+
+    @OneToMany(mappedBy = "news",cascade = CascadeType.ALL,fetch = FetchType.LAZY)
+    @JsonManagedReference
+    private Set<NewsTag> newsTags = new HashSet<>();
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -88,7 +106,15 @@ public class News {
         this.author = author;
     }
 
+
+
     // Getters and Setters
+
+    public Set<Tag> getTags() {
+        return newsTags.stream()
+                .map(NewsTag::getTag)
+                .collect(Collectors.toSet());
+    }
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

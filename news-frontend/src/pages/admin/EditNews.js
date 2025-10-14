@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../components/AuthContext';
 import { newsAPI } from '../../services/api';
-
+import { toast } from 'react-toastify';
 const EditNews = () => {
   const [formData, setFormData] = useState({
     title: '',
@@ -88,15 +88,16 @@ const EditNews = () => {
       
       console.log('Updating news with data:', newsData);
       const response = await newsAPI.updateNews(id, newsData);
-      setSuccess('Cập nhật tin tức thành công!');
-      
-      // Chuyển đến trang quản lý tin tức sau 2 giây
-      setTimeout(() => {
+      // setSuccess('Cập nhật tin tức thành công!');
+      toast.success('Cập nhật tin tức thành công');
+
+      // setTimeout(() => {
         navigate('/admin/news');
-      }, 2000);
+      // }, 2000);
 
     } catch (err) {
-      setError('Có lỗi xảy ra khi cập nhật tin tức: ' + (err.response?.data?.message || err.message));
+      // setError('Có lỗi xảy ra khi cập nhật tin tức: ' + (err.response?.data?.message || err.message));
+      toast.error('Có lỗi xảy ra khi cập nhật tin tức');
     } finally {
       setLoading(false);
     }

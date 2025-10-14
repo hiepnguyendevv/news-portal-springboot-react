@@ -198,24 +198,7 @@ const Signup = () => {
                   </div>
                 </div>
 
-                <div className="mb-3 form-check">
-                  <input
-                    type="checkbox"
-                    className="form-check-input"
-                    id="agreeTerms"
-                    required
-                  />
-                  <label className="form-check-label" htmlFor="agreeTerms">
-                    Tôi đồng ý với{' '}
-                    <Link to="/terms" className="text-decoration-none">
-                      Điều khoản sử dụng
-                    </Link>{' '}
-                    và{' '}
-                    <Link to="/privacy" className="text-decoration-none">
-                      Chính sách bảo mật
-                    </Link>
-                  </label>
-                </div>
+          
 
                 <button
                   type="submit"

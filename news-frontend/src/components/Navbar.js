@@ -176,16 +176,29 @@ const Navbar = () => {
                     </span>
                   )}
                 </a>
-                <ul className="dropdown-menu dropdown-menu-end" style={{ minWidth: '320px' }}>
+                <ul className="dropdown-menu dropdown-menu-end" style={{ minWidth: '320px', maxHeight: '400px', overflowY: 'auto' }}>
                   {notifs.length === 0 ? (
                     <li><span className="dropdown-item-text text-muted">Không có thông báo</span></li>
                   ) : (
                     notifs.slice(0, 10).map(n => (
                       <li key={n.id}>
                         <div className="dropdown-item d-flex justify-content-between align-items-start">
-                          <div className="me-2" style={{ maxWidth: '240px' }}>
-                            <div className="fw-semibold">{n.title || 'Thông báo'}</div>
-                            <div className="small text-muted">{n.message}</div>
+                          <div className="me-2" style={{ maxWidth: '240px', overflow: 'hidden' }}>
+                            <div className="fw-semibold text-truncate" title={n.title || 'Thông báo'}>{n.title || 'Thông báo'}</div>
+                            <div
+                              className="small text-muted"
+                              style={{
+                                wordBreak: 'break-word',
+                                whiteSpace: 'normal',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 3,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                              }}
+                            >
+                              {n.message}
+                            </div>
                           </div>
                           {!n.read && (
                             <button className="btn btn-sm btn-link" onClick={() => handleMarkRead(n.id)}>Đã đọc</button>
@@ -225,6 +238,12 @@ const Navbar = () => {
                       Bài viết của tôi
                     </Link>
                   </li>
+                  <li>
+                    <Link className="dropdown-item" to="/saved">
+                      <i className="fas fa-bookmark me-2"></i>
+                      Tin đã lưu
+                    </Link>
+                  </li>
                   {user?.role === 'ADMIN' && (
                     <>
                       <li><hr className="dropdown-divider" /></li>
@@ -241,7 +260,7 @@ const Navbar = () => {
                     <button
                       className="dropdown-item text-danger"
                       onClick={handleLogout}
-                    >
+                    >                                                                                                             
                       <i className="fas fa-sign-out-alt me-2"></i>
                       Đăng xuất
                     </button>

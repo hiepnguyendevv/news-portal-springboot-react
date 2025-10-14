@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { newsAPI } from '../../services/api';
-
+import { toast } from 'react-toastify';
 const EditCategory = () => {
   const [formData, setFormData] = useState({
     name: '',
@@ -37,7 +37,8 @@ const EditCategory = () => {
         isActive: category.isActive !== false
       });
     } catch (err) {
-      setError('Không thể tải thông tin danh mục');
+      // setError('Không thể tải thông tin danh mục');
+      toast.error('Không thể tải thông tin danh mục');
     } finally {
       setPageLoading(false);
     }

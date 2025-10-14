@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../components/AuthContext';
 import { newsAPI } from '../services/api';
 import ConfirmModal from '../components/ConfirmModal';
+import { toast } from 'react-toastify';
 
 const MyNews = () => {
   const [myNews, setMyNews] = useState([]);
@@ -13,7 +13,6 @@ const MyNews = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedNewsId, setSelectedNewsId] = useState(null);
 
-  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -41,6 +40,7 @@ const MyNews = () => {
     } catch (err) {
       setError('Không thể tải danh sách bài viết');
       console.error('Error fetching my news:', err);
+      toast.error('Không thể tải danh sách bài viết');
     } finally {
       setLoading(false);
     }
@@ -56,11 +56,13 @@ const MyNews = () => {
   const handleSubmitForReview = async (newsId) => {
     try {
       await newsAPI.submitMyNews(newsId);
-      setSuccess('Đã gửi bài để duyệt');
+      // setSuccess('Đã gửi bài để duyệt');
+      toast.success('Đã gửi bài để duyệt');
       // Refresh list
       fetchMyNews();
     } catch (err) {
-      setError('Lỗi khi gửi duyệt: ' + (err.response?.data?.error || err.message));
+      // setError('Lỗi khi gửi duyệt: ' + (err.response?.data?.error || err.message));
+      toast.error('Lỗi khi gửi duyệt');
     }
   };
 
@@ -82,9 +84,11 @@ const MyNews = () => {
     try {
       await newsAPI.deleteMyNews(selectedNewsId);
       setMyNews(myNews.filter(news => news.id !== selectedNewsId));
-      setSuccess('Xóa bài viết thành công!');
+      // setSuccess('Xóa bài viết thành công!');
+      toast.success('Xóa bài viết thành công');
     } catch (err) {
-      setError('Lỗi khi xóa bài viết: ' + err.message);
+      // setError('Lỗi khi xóa bài viết: ' + err.message);
+      toast.error('Lỗi khi xóa bài viết');
     } finally {
       setShowDeleteModal(false);
       setSelectedNewsId(null);

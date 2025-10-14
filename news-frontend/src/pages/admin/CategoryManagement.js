@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { newsAPI } from '../../services/api';
 import CategoryTable from '../../components/CategoryTable';
 import ConfirmModal from '../../components/ConfirmModal';
-
+import { toast } from 'react-toastify';
 const CategoryManagement = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -11,6 +11,8 @@ const CategoryManagement = () => {
   const [success, setSuccess] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
   const navigate = useNavigate();
 
@@ -49,12 +51,56 @@ const CategoryManagement = () => {
     try {
       await newsAPI.deleteCategory(selectedCategoryId);
       setCategories(categories.filter(category => category.id !== selectedCategoryId));
-      setSuccess('Xóa danh mục thành công!');
+      // setSuccess('Xóa danh mục thành công!');
+      toast.success('Xóa danh mục thành công');
     } catch (err) {
-      setError('Lỗi khi xóa danh mục: ' + err.message);
+      // setError('Lỗi khi xóa danh mục: ' + err.message);
+      toast.error('Lỗi khi xóa danh mục');
     } finally {
       setShowDeleteModal(false);
       setSelectedCategoryId(null);
+    }
+  };
+
+  // Bulk action handlers
+  const handleSelectItem = (itemId, checked) => {
+    if (checked) {
+      setSelectedItems(prev => [...prev, itemId]);
+    } else {
+      setSelectedItems(prev => prev.filter(id => id !== itemId));
+    }
+  };
+
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      setSelectedItems(categories.map(category => category.id));
+    } else {
+      setSelectedItems([]);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedItems.length === 0) {
+      toast.warning('Vui lòng chọn ít nhất một danh mục để xóa');
+      return;
+    }
+    setShowBulkDeleteModal(true);
+  };
+
+  const handleConfirmBulkDelete = async () => {
+    try {
+      console.log('Deleting category IDs:', selectedItems);
+      const response = await newsAPI.bulkDeleteCategories(selectedItems);
+      console.log('Delete response:', response);
+      setCategories(categories.filter(category => !selectedItems.includes(category.id)));
+      toast.success(response.data.message);
+      setSelectedItems([]);
+    } catch (err) {
+      console.error('Error deleting categories:', err);
+      console.error('Error response:', err.response);
+      toast.error('Lỗi khi xóa danh mục: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setShowBulkDeleteModal(false);
     }
   };
 
@@ -72,6 +118,16 @@ const CategoryManagement = () => {
         confirmBtnClass="btn-danger"
         onConfirm={handleConfirmDelete}
         onClose={() => { setShowDeleteModal(false); setSelectedCategoryId(null); }}
+      />
+      <ConfirmModal
+        show={showBulkDeleteModal}
+        title="Xóa nhiều danh mục"
+        message={`Bạn có chắc chắn muốn xóa ${selectedItems.length} danh mục đã chọn? Hành động này không thể hoàn tác.`}
+        confirmText="Xóa tất cả"
+        cancelText="Hủy"
+        confirmBtnClass="btn-danger"
+        onConfirm={handleConfirmBulkDelete}
+        onClose={() => setShowBulkDeleteModal(false)}
       />
       <div className="row">
         <div className="col-12">
@@ -116,8 +172,20 @@ const CategoryManagement = () => {
 
           {/* Category Table */}
           <div className="card">
-            <div className="card-header">
+            <div className="card-header d-flex justify-content-between align-items-center">
               <h5 className="mb-0">Danh sách danh mục</h5>
+              {selectedItems.length > 0 && (
+                <div className="btn-group">
+                  <button 
+                    className="btn btn-danger btn-sm"
+                    onClick={handleBulkDelete}
+                    title="Xóa tất cả đã chọn"
+                  >
+                    <i className="fas fa-trash me-1"></i>
+                    Xóa ({selectedItems.length})
+                  </button>
+                </div>
+              )}
             </div>
             <div className="card-body">
               {loading ? (
@@ -129,8 +197,10 @@ const CategoryManagement = () => {
               ) : categories.length > 0 ? (
                 <CategoryTable 
                   categories={categories}
-                  onEdit={handleEditCategory}
                   onDelete={handleDeleteCategory}
+                  selectedItems={selectedItems}
+                  onSelectItem={handleSelectItem}
+                  onSelectAll={handleSelectAll}
                 />
               ) : (
                 <div className="text-center py-4">

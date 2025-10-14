@@ -1,6 +1,6 @@
 import React from 'react';
 
-const UserTable = ({ users, onEdit, onDelete, onToggleStatus }) => {
+const UserTable = ({ users, onEdit, onDelete, onToggleStatus, selectedItems, onSelectItem, onSelectAll }) => {
   const getRoleBadge = (role) => {
     const badges = {
       ADMIN: 'bg-danger',
@@ -35,6 +35,14 @@ const UserTable = ({ users, onEdit, onDelete, onToggleStatus }) => {
       <table className="table table-hover">
         <thead className="table-dark">
           <tr>
+            <th>
+              <input 
+                type="checkbox" 
+                checked={selectedItems.length === users.length && users.length > 0}
+                onChange={(e) => onSelectAll(e.target.checked)}
+                className="form-check-input"
+              />
+            </th>
             <th>STT</th>
             <th>Tên đăng nhập</th>
             <th>Email</th>
@@ -47,6 +55,14 @@ const UserTable = ({ users, onEdit, onDelete, onToggleStatus }) => {
         <tbody>
           {users.map((user, index) => (
             <tr key={user.id}>
+              <td>
+                <input 
+                  type="checkbox" 
+                  checked={selectedItems.includes(user.id)}
+                  onChange={(e) => onSelectItem(user.id, e.target.checked)}
+                  className="form-check-input"
+                />
+              </td>
               <td>{index + 1}</td>
               <td>{user.username}</td>
               <td>{user.email}</td>
