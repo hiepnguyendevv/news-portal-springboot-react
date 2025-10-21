@@ -105,22 +105,22 @@ public class LiveContentService {
             return updated;
 
         } catch (Exception e) {
-            // In ra lỗi để bạn thấy chính xác
             e.printStackTrace();
             throw new RuntimeException("Lỗi khi đang update", e);
         }
     }
 
-    
+
 
     @Transactional
     public void removeContent(Long newsId, Long liveContentId) {
 
+        // 1. Tìm và kiểm tra bảo mật
         LiveContent liveContent = liveContentRepository.findById(liveContentId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy LiveContent với ID: " + liveContentId));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy LiveContent ID: " + liveContentId));
 
         if (!liveContent.getNews().getId().equals(newsId)) {
-            throw new SecurityException("Hành động không được phép: Nội dung không thuộc bài tường thuật này.");
+            throw new SecurityException("Hành động không được phép.");
         }
 
         liveContentRepository.delete(liveContent);

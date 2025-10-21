@@ -116,17 +116,14 @@ public class AdminCategoryController {
                     .body(Map.of("error", "Danh sách ID danh mục không được để trống"));
             }
 
-            int deletedCount = 0;
             for (Long id : categoryIds) {
                 if (categoryRepository.existsById(id)) {
                     categoryRepository.deleteById(id);
-                    deletedCount++;
                 }
             }
 
             return ResponseEntity.ok(Map.of(
-                "message", "Đã xóa " + deletedCount + " danh mục thành công",
-                "deletedCount", deletedCount
+                "message", "Đã xóa  danh mục thành công"
             ));
 
         } catch (Exception e) {

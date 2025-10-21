@@ -38,6 +38,7 @@ const LiveNewsDashboard = () => {
                     
                     switch(eventData.action){
                         case 'ADD_ENTRY':
+                            console.log('add successfuly');
                             setEntries(prev => [eventData, ...prev]);
                             break;
                         case 'UPDATE_ENTRY':
@@ -47,6 +48,7 @@ const LiveNewsDashboard = () => {
 
                         case 'REMOVE_ENTRY':
                             setEntries(prev => prev.filter(entry => entry.id !== eventData.id));
+                            console.log('remove successfuly');
                             break;
                         default:
                             console.error('Unknown action:', eventData.action);

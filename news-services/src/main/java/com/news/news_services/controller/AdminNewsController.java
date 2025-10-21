@@ -175,13 +175,11 @@ public class AdminNewsController {
         if (!newsRepository.existsById(id)) {
             throw new RuntimeException("News not found with id: " + id);
         }
-        // 1) Xóa phụ thuộc theo newsId (bulk delete, không lặp)
         commentLikesRepository.deleteByNewsId(id);
         commentRepository.deleteByNewsId(id);
 //        newsTagRepository.deleteByNewsId(id);
         bookmarkRepository.deleteByNewsId(id);
 
-        // 2) Xóa news
         newsRepository.deleteById(id);
         return ResponseEntity.ok("News deleted successfully");
     }
@@ -203,13 +201,10 @@ public class AdminNewsController {
                 }
             }
 
-            // Cập nhật featured status nếu có
             if (statusData.containsKey("featured")) {
                 Boolean featured = (Boolean) statusData.get("featured");
                 news.setFeatured(featured);
             }
-
-            // Cập nhật review note nếu có
             if (statusData.containsKey("reviewNote")) {
                 String note = (String) statusData.get("reviewNote");
                 news.setReviewNote(note);
@@ -253,13 +248,11 @@ public class AdminNewsController {
                     
                     // Xóa news
                     newsRepository.deleteById(id);
-                    deletedCount++;
                 }
             }
 
             return ResponseEntity.ok(Map.of(
-                "message", "Đã xóa " + deletedCount + " tin tức thành công",
-                "deletedCount", deletedCount
+                "message", "Đã xóa tin tức thành công"
             ));
 
         } catch (Exception e) {
@@ -278,20 +271,18 @@ public class AdminNewsController {
                     .body(Map.of("error", "Danh sách ID tin tức không được để trống"));
             }
 
-            int approvedCount = 0;
+
             for (Long id : newsIds) {
                 News news = newsRepository.findById(id).orElse(null);
                 if (news != null) {
                     news.setPublished(true);
                     news.setStatus(News.Status.PUBLISHED);
                     newsRepository.save(news);
-                    approvedCount++;
                 }
             }
 
             return ResponseEntity.ok(Map.of(
-                "message", "Đã phê duyệt " + approvedCount + " tin tức thành công",
-                "approvedCount", approvedCount
+                "message", "Đã phê duyệt tin tức thành công"
             ));
 
         } catch (Exception e) {

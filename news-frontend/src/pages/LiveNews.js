@@ -133,15 +133,39 @@ export default function LiveNews() {
                 setConnected(true);
                 setError(null);
                 client.subscribe(`/topic/live/${newsId}`, (frame) => {
-                    const newEntry = JSON.parse(frame.body);
+                    const eventData = JSON.parse(frame.body);
+                    console.log('LiveNews received:', eventData);
                     
-                    // **THAY ĐỔI LOGIC TẠI ĐÂY**
-                    // Nếu tin mới là tin ghim, cập nhật tin ghim
-                    if (newEntry.entryStatus === 'PINNED') {
-                        setPinnedEntry(newEntry);
-                    } else {
-                        // Nếu không, thêm vào cuối danh sách tin thường
-                        setEntries(prevEntries => [...prevEntries, newEntry]);
+                    switch(eventData.action) {
+                        case 'ADD_ENTRY':
+                            if (eventData.entryStatus === 'PINNED') {
+                                setPinnedEntry(eventData);
+                            } else {
+                                setEntries(prevEntries => [...prevEntries, eventData]);
+                            }
+                            break;
+                            
+                        case 'UPDATE_ENTRY':
+                            if (eventData.entryStatus === 'PINNED') {
+                                setPinnedEntry(eventData);
+                            } else {
+                                setEntries(prevEntries => 
+                                    prevEntries.map(entry => entry.id === eventData.id ? eventData : entry)
+                                );
+                            }
+                            break;
+                            
+                        case 'REMOVE_ENTRY':
+                            // Xóa khỏi cả pinned và entries
+                            setPinnedEntry(prev => prev?.id === eventData.id ? null : prev);
+                            setEntries(prevEntries => 
+                                prevEntries.filter(entry => entry.id !== eventData.id)
+                            );
+                            break;
+                            
+                        default:
+                            console.log('Unknown action:', eventData.action);
+                            break;
                     }
                 });
             };
@@ -211,20 +235,17 @@ export default function LiveNews() {
                         </header>
                     )}
 
-                    {/* Nội dung live blog */}
                     <div className="news-content">
                         <div className="fs-5 lh-lg">
-                            {/* Hiển thị tin ghim */}
                     {pinnedEntry && (
                         <div className="pinned-entry bg-light p-3 p-md-4 rounded my-4">
-                            <h5 className="fw-bold mb-3">📌 TIN NỔI BẬT</h5>
+                            <h5 className="fw-bold mb-3">TIN NỔI BẬT</h5>
                             <div className="live-entry-article py-0">
                                  <LiveEntry entry={pinnedEntry} />
                             </div>
                         </div>
                     )}
                     
-                            {/* Danh sách các entry */}
                             <div>
                                 {entries.map(e => <LiveEntry key={e.id} entry={e} />)}
                             </div>

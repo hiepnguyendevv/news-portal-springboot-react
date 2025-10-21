@@ -84,13 +84,11 @@ public class UserService {
 
     @Transactional
     public User createUser(Map<String, Object> userData) {
-        // Check if username already exists
         String username = (String) userData.get("username");
         if (userRepository.findByUsername(username).isPresent()) {
             throw new RuntimeException("Tên đăng nhập đã tồn tại");
         }
 
-        // Check if email already exists
         String email = (String) userData.get("email");
         if (userRepository.findByEmail(email).isPresent()) {
             throw new RuntimeException("Email đã tồn tại");
@@ -101,7 +99,6 @@ public class UserService {
         user.setEmail(email);
         user.setFullName((String) userData.get("fullName"));
         
-        // Encode password
         String password = (String) userData.get("password");
         if (password != null && !password.isEmpty()) {
             user.setPassword(passwordEncoder.encode(password));
@@ -115,7 +112,6 @@ public class UserService {
             user.setRole(User.UserRole.USER);
         }
 
-        // Set status
         String status = (String) userData.get("status");
         if (status != null) {
             user.setStatus(User.UserStatus.valueOf(status));
@@ -125,10 +121,7 @@ public class UserService {
 
         return userRepository.save(user);
     }
-    
-    /**
-     * Cập nhật user với validation
-     */
+
     @Transactional
     public User updateUser(Long id, Map<String, Object> userData) {
         User user = userRepository.findById(id)

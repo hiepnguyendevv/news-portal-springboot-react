@@ -36,14 +36,25 @@
 
         @MessageMapping("/live/{newsId}/deleteEntry")
         public void deleteEntry(@DestinationVariable Long newsId, LiveNewsEvent dto ) {
-
+            System.out.println("[DEBUG] Nhận yêu cầu xóa cho newsId: " + newsId);
+            if (dto != null) {
+                System.out.println("[DEBUG] DTO action: " + dto.getAction());
+                System.out.println("[DEBUG] DTO entry ID: " + dto.getId());
+            } else {
+                System.err.println("[DEBUG] LỖI: DTO bị null!");
+                return;
+            }
 
             try {
+                if (dto.getId() == null) {
+                    System.err.println("[DEBUG] LỖI: dto.getId() bị null!");
+                    return;
+                }
                 liveContentService.removeContent(newsId, dto.getId());
 
             } catch (Exception e) {
                 System.err.println("Lỗi khi xử lý REMOVE_ENTRY: " + e.getMessage());
-                e.printStackTrace();
+                e.printStackTrace(); // In ra lỗi đầy đủ
             }
         }
     
@@ -70,8 +81,6 @@
         @MessageMapping("/live/{newsId}/updateEntry")
         public void updateEntry(@DestinationVariable Long newsId, LiveNewsEvent dto) {
             Long liveContentId = dto.getId();
-
-
 
             try {
 

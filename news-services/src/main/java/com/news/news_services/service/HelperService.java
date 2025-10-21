@@ -11,7 +11,6 @@ public class HelperService {
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
     public String toSlug(String input) {
-        // Handle null or empty input
         if (input == null || input.trim().isEmpty()) {
             return "";
         }
