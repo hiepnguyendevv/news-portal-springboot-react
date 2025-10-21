@@ -49,6 +49,7 @@ public class SecurityConfig {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(userDetailService);
         authProvider.setPasswordEncoder(passwordEncoder());
+
         return authProvider;
     }
 
@@ -82,6 +83,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth ->
                         auth
                                 .requestMatchers("/").permitAll()
+                                
                                 .requestMatchers("/login").permitAll()
                                 .requestMatchers("/oauth2/**").permitAll()
                                 .requestMatchers("/api/oauth2/**").permitAll()
@@ -89,12 +91,14 @@ public class SecurityConfig {
                                 .requestMatchers("/api/tags/**").permitAll()
                                 .requestMatchers("/api/news/test").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/api/news/**").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/api/live-content/**").permitAll()
                                 .requestMatchers("/api/category/**").permitAll()
                                 .requestMatchers(HttpMethod.POST, "/api/news/import-data").permitAll()
                                 .requestMatchers(HttpMethod.POST, "/api/news/clear-all-data").permitAll()
                                 .requestMatchers(HttpMethod.POST, "/api/news/create").hasRole("USER")
                                 .requestMatchers("/api/news/my-news/**").authenticated()
                                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                                .requestMatchers("/ws/**").permitAll()
                                 .anyRequest().authenticated()
                         )
                 .oauth2Login(oauth2 -> {

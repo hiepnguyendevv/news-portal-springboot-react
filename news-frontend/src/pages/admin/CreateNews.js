@@ -104,7 +104,7 @@ const CreateNews = () => {
       });
 
       // Điều hướng
-      navigate('/admin/news');
+      navigate(`/admin/news/${response.data.id}`);
 
     } catch (err) {
       // setError('Có lỗi xảy ra khi tạo tin tức: ' + (err.response?.data?.message || err.message));

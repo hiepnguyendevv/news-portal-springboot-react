@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { newsAPI } from '../services/api';
 import BookmarkButton from '../components/BookmarkButton';
 import CommentSection from '../components/CommentSection';
+import LiveNews from './LiveNews';
 const NewsDetail = () => {
   const { slugWithId } = useParams(); // Nhận "tin-tuc-moi-123"
   
@@ -17,7 +18,6 @@ const NewsDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const incrementedRef = React.useRef(false);
-  const [tags, setTags] = useState([]);
 
   useEffect(() => {
     fetchNewsDetail();
@@ -28,7 +28,6 @@ const NewsDetail = () => {
       setLoading(true);
       const response = await newsAPI.getNewsById(id);
       
-      // Kiểm tra nếu không có data (bất kể status code)
       if (!response.data) {
         setError('Bài viết không tồn tại hoặc đã bị gỡ xuống.');
         return;
@@ -44,52 +43,25 @@ const NewsDetail = () => {
       }
     } catch (err) {
       console.error('Error fetching news detail:', err);
-      
-      // Kiểm tra các trường hợp lỗi khác nhau
-      if (err.response?.status === 404) {
-        setError('Bài viết không tồn tại hoặc đã bị gỡ xuống.');
-      } else if (err.response?.status === 304) {
-        // 304 Not Modified - có thể là cache issue
-        setError('Bài viết không tồn tại hoặc đã bị gỡ xuống.');
-      } else if (err.response?.status >= 400) {
-        setError('Bài viết không tồn tại hoặc đã bị gỡ xuống.');
-      } else {
-        setError('Không thể tải chi tiết tin tức.');
-      }
+   
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchTags = async () => {
-    try {
-      const response = await newsAPI.getTagsByNewsId(id);
-      setTags(response.data);
-    } catch (err) {
-      console.error('Error fetching tags:', err);
-    }
-  };
+
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('vi-VN', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      // hour: '2-digit',
+      // minute: '2-digit'
     });
   };
 
-  const getCategoryColor = (category) => {
-    const colors = {
-      'Kinh tế': 'bg-success',
-      'Công nghệ': 'bg-primary',
-      'Thể thao': 'bg-warning',
-      'Sức khỏe': 'bg-info',
-      'Giải trí': 'bg-danger'
-    };
-    return colors[category] || 'bg-secondary';
-  };
+
 
   if (loading) {
     return (
@@ -124,6 +96,10 @@ const NewsDetail = () => {
     return null;
   }
 
+  if (news.realtime) {
+    return <LiveNews />;
+  }
+
   return (
     <div className="container py-4">
       <nav aria-label="breadcrumb">
@@ -143,7 +119,7 @@ const NewsDetail = () => {
       <article className="row">
         <div className="col-lg-8 mx-auto">
           <header className="mb-4">
-            <span className={`badge mb-3 ${getCategoryColor(news.category?.name || news.category)}`}>
+            <span className={`badge mb-3 ${news.category?.name || news.category}`}>
               {news.category?.name || news.category}
             </span>
             <h1 className="display-6 mb-3">{news.title}</h1>
@@ -204,8 +180,7 @@ const NewsDetail = () => {
             </div>
             
           </div>
-          <div className="mb-4">
-            <h5 className="mb-3">Tags</h5>
+          <div className="mb-4 mt-4">
             <div className="d-flex flex-wrap">
               {news.tags.map((tag) => (
                 <span key={tag.id} className="badge bg-primary me-2">{tag != null ? tag.name : 'null'}</span>

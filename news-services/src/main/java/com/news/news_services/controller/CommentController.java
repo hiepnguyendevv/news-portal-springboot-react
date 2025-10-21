@@ -22,7 +22,7 @@ public class CommentController {
 
     @GetMapping
     public List<CommentWithRepliesDto> getAllComments(@RequestParam Long newsId,Authentication auth){
-        Long userId = auth != null ? ((UserPrincipal)auth.getPrincipal()).getId() : null;
+        Long userId = auth != null ? ((UserPrincipal)auth   .getPrincipal()).getId() : null;
         return commentService.getAllCommentsForNews(newsId, userId);
     }
 

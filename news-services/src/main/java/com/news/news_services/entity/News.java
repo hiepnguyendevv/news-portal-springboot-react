@@ -7,7 +7,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -92,10 +94,27 @@ public class News {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "is_realtime")
+    private boolean isRealtime = false;
+
+    @Column (name = "live_start_time")
+    private LocalDateTime liveStartTime;
+
+    @Column(name = "live_end_time")
+    private LocalDateTime liveEndTime;
+
+    @OneToMany(mappedBy = "news",cascade = CascadeType.ALL,fetch = FetchType.LAZY)
+    @JsonManagedReference
+    private List<LiveContent> liveContents = new ArrayList<>();
+
+
+
     public News() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
+
+
 
     public News(String title, String summary, String content, Category category, User author) {
         this();
@@ -114,6 +133,30 @@ public class News {
         return newsTags.stream()
                 .map(NewsTag::getTag)
                 .collect(Collectors.toSet());
+    }
+
+    public LocalDateTime getLiveEndTime() {
+        return liveEndTime;
+    }
+
+    public void setLiveEndTime(LocalDateTime liveEndTime) {
+        this.liveEndTime = liveEndTime;
+    }
+
+    public LocalDateTime getLiveStartTime() {
+        return liveStartTime;
+    }
+
+    public void setLiveStartTime(LocalDateTime liveStartTime) {
+        this.liveStartTime = liveStartTime;
+    }
+
+    public boolean isRealtime() {
+        return isRealtime;
+    }
+
+    public void setRealtime(boolean realtime) {
+        this.isRealtime = realtime;
     }
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -169,7 +212,13 @@ public class News {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
+    public List<LiveContent> getLiveContents() {
+        return liveContents;
+    }
 
+    public void setLiveContents(List<LiveContent> liveContents) {
+        this.liveContents = liveContents;
+    }
 
     @PreUpdate
     public void setLastUpdate() {

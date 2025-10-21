@@ -10,3 +10,10 @@ news-frontend/node_modules/
 news-frontend/build/
 news-services/target/
 
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*.local
+

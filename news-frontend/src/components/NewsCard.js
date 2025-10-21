@@ -8,21 +8,12 @@ const NewsCard = ({ news }) => {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      // hour: '2-digit',
+      // minute: '2-digit'
     });
   };
 
-  const getCategoryColor = (category) => {
-    const colors = {
-      'Kinh tế': 'bg-success',
-      'Công nghệ': 'bg-primary',
-      'Thể thao': 'bg-warning',
-      'Sức khỏe': 'bg-info',
-      'Giải trí': 'bg-danger'
-    };
-    return colors[category] || 'bg-secondary';
-  };
+
 
   return (
     <div className="col-12 col-md-6 col-lg-4 mb-4">
@@ -39,7 +30,7 @@ const NewsCard = ({ news }) => {
         
         <div className="card-body d-flex flex-column">
           <div className="mb-2">
-            <span className={`badge category-badge ${getCategoryColor(news.category?.name || news.category)}`}>
+            <span className={`badge category-badge ${news.category?.name || news.category}`}>
               {news.category?.name || news.category}
             </span>
           </div>

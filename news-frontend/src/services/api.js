@@ -131,7 +131,7 @@ export const newsAPI = {
   getMyBookmark: async (page = 0 , size = 12) => api.get(`/me/bookmark?page=${page}&size=${size}`),
 
   // Comment APIs
-  getComments: async (newsId, page = 0, size = 10) => api.get(`/comments?newsId=${newsId}&page=${page}&size=${size}`),
+  getComments: async (newsId) => api.get(`/comments?newsId=${newsId}`),
   getReplies: async (parentId) => api.get(`/comments/${parentId}/replies`),
   addComment: async (newsId, content, parentId) => api.post(`/comments`, {newsId, content, parentId}),
   deleteComment: async (commentId) => api.delete(`/comments/${commentId}`),
@@ -159,7 +159,9 @@ export const newsAPI = {
     console.log('Search comment API call with params:', params.toString());
     return api.get(`/admin/comment/search?${params.toString()}`);
   },
-  //Tag APIs
+  //
+  //Live News APIs
+  deleteLiveEntry: async (entryId) => api.delete(`/live-content/${entryId}`),
 }; 
 
 export default api;

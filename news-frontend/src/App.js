@@ -33,7 +33,10 @@ import CreateMyNews from './pages/CreateMyNews';
 import EditMyNews from './pages/EditMyNews';
 import SavedNews from './pages/SavedNews';
 import OAuth2Callback from './components/OAuth2Callback';
-
+import LiveNews from './pages/LiveNews';
+import LiveNewsCreate from './pages/admin/LiveNewsCreate';
+import LiveNewsDashboard from './pages/admin/LiveNewsDashboard';
+import WebSocketTest from './pages/WebSocketTest';
 function App() {
   return (
     <AuthProvider>
@@ -41,6 +44,9 @@ function App() {
         <Navbar />
         <main className="main-content">
           <Routes>
+          {/* <Route path="/live/:newsId" element={<LivedNews />} /> */}
+          {/* <Route path="/live/:newsId" element={<LiveNews />} /> */}
+            <Route path="/websocket-test" element={<WebSocketTest />} />
             <Route path="/" element={<Home />} />
             <Route path="/:slugWithId" element={<NewsDetail />} />
             <Route path="/category/:category" element={<Category />} />
@@ -117,7 +123,7 @@ function App() {
                 <CommentManagement />
               </AdminRoute>} 
             />
-            <Route path="/admin/news/edit/:id" element={
+            <Route path="/admin/news/edit/:newsId" element={
               <AdminRoute>
                 <EditNews />
               </AdminRoute>
@@ -146,7 +152,20 @@ function App() {
                 <CategoryManagement />
               </AdminRoute>
             } />
-            
+
+              <Route path="/admin/live-news/create" element={
+                <AdminRoute>
+                  <LiveNewsCreate />
+                </AdminRoute>
+              } />
+              
+
+              {/* <Route path="/admin/live-news/:newsId" element={
+                <AdminRoute>
+                  <LiveNewsDashboard />
+                </AdminRoute>
+              } />  
+             */}
             <Route path="/admin/categories/create" element={
               <AdminRoute>
                 <CreateCategory />
@@ -158,11 +177,12 @@ function App() {
                 <EditCategory />
               </AdminRoute>
             } />
+            
           </Routes>
         </main>
         <ToastContainer
           position="bottom-right"
-          autoClose={2000}
+          autoClose={1000}
           hideProgressBar={false}
           newestOnTop={false}
           closeOnClick

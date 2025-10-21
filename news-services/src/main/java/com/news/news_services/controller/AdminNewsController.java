@@ -85,6 +85,8 @@ public class AdminNewsController {
 
         try {
             //Tạo News entity mới
+            System.out.println("isRealtime:" + (Boolean)newsData.get("isRealtime"));
+            System.out.println("published:" + (Boolean)newsData.get("published"));
             News news = new News();
             news.setTitle((String) newsData.get("title"));
             news.setContent((String) newsData.get("content"));
@@ -94,6 +96,9 @@ public class AdminNewsController {
             if((Boolean) newsData.get("published")){
                 news.setPublished((Boolean) newsData.get("published"));
                 news.setStatus(News.Status.PUBLISHED);
+            }
+            if((Boolean) newsData.get("isRealtime")){
+                news.setRealtime(true);
             }
             news.setFeatured((Boolean) newsData.get("featured"));
 
@@ -150,8 +155,8 @@ public class AdminNewsController {
                 news.setCategory(category);
             }
 
+
             News updatedNews = newsRepository.save(news);
-            @SuppressWarnings("unchecked")
             List<String> tags = (List<String>) newsData.get("tags");
 
             tagService.assignToNews(news.getId(),tags);

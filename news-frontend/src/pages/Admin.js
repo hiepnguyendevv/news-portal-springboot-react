@@ -112,6 +112,16 @@ const Admin = () => {
                     <span>Quản lý bình luận</span>
                   </button>
                 </div>
+
+                <div className="col-md-3">
+                  <button 
+                    className="btn btn-outline-danger w-100"
+                    onClick={() => navigate('/admin/live-news/create')}
+                  >
+                    <i className="fas fa-broadcast-tower fa-2x d-block mb-2"></i>
+                    <span>Tạo Live News</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>

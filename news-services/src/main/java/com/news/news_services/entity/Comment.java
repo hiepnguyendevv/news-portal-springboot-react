@@ -43,9 +43,6 @@ public class Comment {
     @JoinColumn(name = "deleted_by")
     private User deletedBy;
 
-
-
-
     @Column(name = "like_count", nullable = false)
     private Integer likeCount = 0;
 

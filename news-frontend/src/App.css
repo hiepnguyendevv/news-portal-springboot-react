@@ -1,5 +1,6 @@
 .App {
   min-height: 100vh;
+  background-color: #fcfaf6;
 }
 
 .navbar-brand {
@@ -58,12 +59,62 @@
   min-height: 200px;
 }
 
-/* Error message */
-.error-message {
-  background-color: #f8d7da;
-  color: #721c24;
-  padding: 12px 15px;
-  border-radius: 5px;
-  border: 1px solid #f5c6cb;
-  margin-bottom: 20px;
+/* === Import Font từ Google Fonts === */
+@import url('https://fonts.googleapis.com/css2?family=Lora:wght@700&family=Roboto:wght@400;500&display=swap');
+
+/* === CSS cho giao diện báo chí === */
+
+.live-blog-newspaper-style {
+  background-color: #fdfdfd; 
+  color: #212529; 
+  font-family: 'Roboto', sans-serif;
+}
+
+.article-title {
+  font-family: 'Lora', serif; /* Font có chân cho tiêu đề */
+  font-weight: 700;
+  font-size: 2.5rem;
+  line-height: 1.2;
+}
+
+.article-sapo {
+  font-size: 1.1rem;
+  color: #6c757d;
+}
+
+.live-entry-article:last-child {
+  border-bottom: none !important;
+}
+
+.entry-timestamp {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* Nội dung text của mỗi entry */
+.entry-text {
+  font-size: 1.1rem;
+  line-height: 1.7;
+  color: #343a40;
+}
+
+/* Tin ghim */
+.pinned-entry .live-entry-article {
+    border-bottom: none; /* Bỏ border trong box tin ghim */
+}
+
+/* Nút Scroll to Top */
+.scroll-to-top {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+.scroll-to-top .btn {
+  font-size: 1.2rem;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 0.25rem;
 }

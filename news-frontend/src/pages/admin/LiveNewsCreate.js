@@ -1,58 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../components/AuthContext';
 import { newsAPI } from '../../services/api';
 import { toast } from 'react-toastify';
-import LiveNewsDashboard from './LiveNewsDashboard';
-const EditNews = () => {
+
+const CreateNews = () => {
   const [formData, setFormData] = useState({
     title: '',
     summary: '',
-    content: '',
+    isRealtime: true,
+    content: 'Nội dung tường thuật',
     categoryId: '',
     imageUrl: '',
-    published: false,
-    featured: false
+    published: true,
+    featured: true,
+    tags: []
   });
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [tags, setTags] = useState([]); 
 
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { newsId } = useParams();
 
   useEffect(() => {
-    fetchNewsData();
     fetchCategories();
-  }, [newsId]);
-
-  const fetchNewsData = async () => {
-    try {
-      setPageLoading(true);
-      const response = await newsAPI.getNewsById(newsId);
-      const news = response.data;
-      console.log('News data:', news);
-      
-      setFormData({
-        title: news.title || '',
-        summary: news.summary || '',
-        content: news.content || '',
-        categoryId: news.category?.id || '',
-        imageUrl: news.imageUrl || '',
-        published: news.published || false,
-        featured: news.featured || false,
-        realtime: news.realtime || false
-      });
-    } catch (err) {
-      setError('Không thể tải thông tin tin tức');
-      console.error('Error fetching news:', err);
-    } finally {
-      setPageLoading(false);
-    }
-  };
+    fetchTags();
+    }, []);
 
   const fetchCategories = async () => {
     try {
@@ -60,6 +35,14 @@ const EditNews = () => {
       setCategories(response.data);
     } catch (err) {
       console.error('Error fetching categories:', err);
+    }
+  };
+  const fetchTags = async () => {
+    try {
+      const response = await newsAPI.getAllTags();
+      setTags(response.data);
+    } catch (err) {
+      console.error('Error fetching tags:', err);
     }
   };
 
@@ -71,10 +54,21 @@ const EditNews = () => {
     }));
   };
 
+  const handleToggleTag = (tagName) => {
+
+    setFormData(prev => {
+      if (prev.tags.includes(tagName)) {
+        return { ...prev, tags: prev.tags.filter(name => name !== tagName) };
+      } else {
+        return { ...prev, tags: [...prev.tags, tagName] };
+      }
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.title || !formData.content || !formData.categoryId) {
+    if (!formData.title  || !formData.categoryId || !formData.tags.length) {
       setError('Vui lòng điền đầy đủ thông tin bắt buộc');
       return;
     }
@@ -83,83 +77,64 @@ const EditNews = () => {
     setError('');
     
     try {
-      // Gọi API cập nhật tin tức
+      // Gọi API tạo tin tức mới (cần implement ở backend)
       const newsData = {
         ...formData,
         authorId: user.id
       };
       
-      console.log('Updating news with data:', newsData);
-      const response = await newsAPI.updateNews(newsId, newsData);
-      // setSuccess('Cập nhật tin tức thành công!');
-      toast.success('Cập nhật tin tức thành công');
+      // avoid logging large objects during render/submit in production
+      const response = await newsAPI.createNews(newsData);
+      toast.success('Tạo tin tức thành công');
+      
+      // Reset form giống CreateMyNews.js
+      setFormData({
+        title: '',
+        summary: '',
+        content: '',
+        categoryId: '',
+        imageUrl: '',
+        published: false,
+        featured: false,
+        tags: []
+      });
 
-      // setTimeout(() => {
-        navigate('/admin/news');
-      // }, 2000);
+      // Điều hướng
+      navigate(`/admin/live-news/${response.data.id}`);
 
     } catch (err) {
-      // setError('Có lỗi xảy ra khi cập nhật tin tức: ' + (err.response?.data?.message || err.message));
-      toast.error('Có lỗi xảy ra khi cập nhật tin tức');
+      toast.error('Có lỗi xảy ra khi tạo tin tức');
+
     } finally {
       setLoading(false);
     }
   };
-
-  if (pageLoading) {
-    return (
-      <div className="container py-5">
-        <div className="row">
-          <div className="col-12 text-center">
-            <div className="spinner-border text-primary" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-            <p className="mt-2">Đang tải thông tin tin tức...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if(formData.realtime) {
-    return <LiveNewsDashboard />;
-  }
 
   return (
     <div className="container py-5">
       <div className="row">
         <div className="col-12">
           <div className="d-flex justify-content-between align-items-center mb-4">
-            <h2>
-              <i className="fas fa-edit me-2"></i>
-              Chỉnh sửa tin tức
+            <h2 className="mb-0">
+              <i className="fas fa-bolt me-2"></i>
+              Tạo tin trực tiếp
             </h2>
             <button 
-              className="btn btn-secondary"
-              onClick={() => navigate('/admin/news')}
+              className="btn btn-outline-secondary"
+              onClick={() => navigate('/admin')}
             >
               <i className="fas fa-arrow-left me-1"></i>
-              Quay lại
+              Về trang quản trị
             </button>
           </div>
 
-          {error && (
-            <div className="alert alert-danger" role="alert">
-              <i className="fas fa-exclamation-circle me-2"></i>
-              {error}
-            </div>
-          )}
-
-          {success && (
-            <div className="alert alert-success" role="alert">
-              <i className="fas fa-check-circle me-2"></i>
-              {success}
-            </div>
-          )}
 
           <div className="card">
-            <div className="card-header">
-              <h5 className="mb-0">Thông tin tin tức</h5>
+            <div className="card-header d-flex align-items-center justify-content-between">
+              <h5 className="mb-0">
+                Thông tin tin trực tiếp
+              </h5>
+              <small className="text-muted">Các trường có dấu * là bắt buộc</small>
             </div>
             <div className="card-body">
               <form onSubmit={handleSubmit}>
@@ -177,16 +152,14 @@ const EditNews = () => {
                         name="title"
                         value={formData.title}
                         onChange={handleChange}
-                        placeholder="Nhập tiêu đề tin tức..."
+                        placeholder="Nhập tiêu đề tin trực tiếp..."
                         required
                       />
                     </div>
 
                     {/* Summary */}
                     <div className="mb-3">
-                      <label htmlFor="summary" className="form-label">
-                        Tóm tắt
-                      </label>
+                      <label htmlFor="summary" className="form-label">Tóm tắt</label>
                       <textarea
                         className="form-control"
                         id="summary"
@@ -194,30 +167,14 @@ const EditNews = () => {
                         rows="3"
                         value={formData.summary}
                         onChange={handleChange}
-                        placeholder="Nhập tóm tắt tin tức..."
+                        placeholder="Nhập mô tả ngắn cho tin trực tiếp..."
                       />
                     </div>
 
-                    {/* Content */}
-                    <div className="mb-3">
-                      <label htmlFor="content" className="form-label">
-                        Nội dung <span className="text-danger">*</span>
-                      </label>
-                      <textarea
-                        className="form-control"
-                        id="content"
-                        name="content"
-                        rows="10"
-                        value={formData.content}
-                        onChange={handleChange}
-                        placeholder="Nhập nội dung chi tiết tin tức..."
-                        required
-                      />
-                    </div>
+                    
                   </div>
 
                   <div className="col-md-4">
-                    {/* Category */}
                     <div className="mb-3">
                       <label htmlFor="categoryId" className="form-label">
                         Danh mục <span className="text-danger">*</span>
@@ -230,7 +187,7 @@ const EditNews = () => {
                         onChange={handleChange}
                         required
                       >
-                        <option value="">Chọn danh mục</option>
+                        <option value="">Chọn danh mục phù hợp</option>
                         {categories.map(category => (
                           <option key={category.id} value={category.id}>
                             {'--'.repeat(category.level)} {category.name}
@@ -239,11 +196,8 @@ const EditNews = () => {
                       </select>
                     </div>
 
-                    {/* Image URL */}
                     <div className="mb-3">
-                      <label htmlFor="imageUrl" className="form-label">
-                        URL hình ảnh
-                      </label>
+                      <label htmlFor="imageUrl" className="form-label">Ảnh đại diện (URL)</label>
                       <input
                         type="url"
                         className="form-control"
@@ -266,41 +220,31 @@ const EditNews = () => {
                       )}
                     </div>
 
-                    {/* Options */}
                     <div className="mb-3">
-                      <div className="form-check">
-                        <input
-                          className="form-check-input"
-                          type="checkbox"
-                          id="published"
-                          name="published"
-                          checked={formData.published}
-                          onChange={handleChange}
-                        />
-                        <label className="form-check-label" htmlFor="published">
-                          Xuất bản
-                        </label>
+                      <label className="form-label d-block">
+                        Thẻ <span className="text-danger">*</span>
+                      </label>
+                      <div className="d-flex flex-wrap gap-2">
+                        {tags.map(tag => {
+                          const selected = formData.tags.includes(tag.name);
+                          return (
+                            <button
+                              key={tag.id}
+                              type="button"
+                              className={`btn btn-sm ${selected ? 'btn-primary' : 'btn-outline-secondary'}`}
+                              onClick={() => handleToggleTag(tag.name)}
+                              aria-pressed={selected}
+                            >
+                              {tag.name}
+                            </button>
+                          );
+                        })}
                       </div>
-                    </div>
-
-                    <div className="mb-3">
-                      <div className="form-check">
-                        <input
-                          className="form-check-input"
-                          type="checkbox"
-                          id="featured"
-                          name="featured"
-                          checked={formData.featured}
-                          onChange={handleChange}
-                        />
-                        <label className="form-check-label" htmlFor="featured">
-                          Tin tức nổi bật
-                        </label>
-                      </div>
+                      <small className="text-muted d-block mt-1">Chọn ít nhất 1 thẻ để phân loại tin trực tiếp.</small>
                     </div>
 
                     {/* Submit Button */}
-                    <div className="d-grid">
+                    <div className="d-grid mt-2">
                       <button
                         type="submit"
                         className="btn btn-primary"
@@ -309,12 +253,12 @@ const EditNews = () => {
                         {loading ? (
                           <>
                             <span className="spinner-border spinner-border-sm me-2"></span>
-                            Đang cập nhật...
+                            Đang tạo tin trực tiếp...
                           </>
                         ) : (
                           <>
                             <i className="fas fa-save me-1"></i>
-                            Cập nhật tin tức
+                            Tạo tin trực tiếp
                           </>
                         )}
                       </button>
@@ -330,4 +274,4 @@ const EditNews = () => {
   );
 };
 
-export default EditNews;
+export default CreateNews;

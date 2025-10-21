@@ -399,8 +399,6 @@ public class NewsService {
     }
 
     @Transactional
-
-
     public News updateMyNews(Long id, Map<String, Object> newsData) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
