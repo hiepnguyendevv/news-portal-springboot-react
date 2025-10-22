@@ -146,6 +146,7 @@ const UserManagement = () => {
     } catch (err) {
       console.error('Error deleting users:', err);
       console.error('Error response:', err.response);
+      console.error('Error message:', err.response?.data?.error || err.message);
       toast.error('Lỗi khi xóa người dùng: ' + (err.response?.data?.error || err.message));
     } finally {
       setShowBulkDeleteModal(false);
@@ -188,7 +189,9 @@ const UserManagement = () => {
       <ConfirmModal
         show={showBulkDeleteModal}
         title="Xóa nhiều người dùng"
-        message={`Bạn có chắc chắn muốn xóa ${selectedItems.length} người dùng đã chọn? Hành động này không thể hoàn tác.`}
+        message={`Bạn có chắc chắn muốn xóa ${selectedItems.length} người dùng đã chọn?
+        Nếu thực hiện xóa có thể xóa hết bài viết liên quan đến tác giả này.
+         Hành động này không thể hoàn tác.`}
         confirmText="Xóa tất cả"
         cancelText="Hủy"
         confirmBtnClass="btn-danger"

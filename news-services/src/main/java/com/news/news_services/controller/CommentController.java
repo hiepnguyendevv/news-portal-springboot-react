@@ -35,14 +35,23 @@ public class CommentController {
 
     @PostMapping
     public CommentWithRepliesDto createComment(@RequestBody CreateCommentRequest request, Authentication auth){
+        if (auth == null || auth.getPrincipal() == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+        
         Long userId = ((UserPrincipal)auth.getPrincipal()).getId();
-        Comment comment = commentService.createComment(
-                request.getContent(),
-                userId,
-                request.getNewsId(),
-                request.getParentId()
-        );
-        return CommentWithRepliesDto.from(comment, List.of());
+        
+        try {
+            Comment comment = commentService.createComment(
+                    request.getContent(),
+                    userId,
+                    request.getNewsId(),
+                    request.getParentId()
+            );
+            return CommentWithRepliesDto.from(comment, List.of());
+        } catch (RuntimeException e) {
+            throw e;
+        }
     }
 
     @DeleteMapping("/{id}")

@@ -93,14 +93,19 @@ public class AdminNewsController {
             news.setSummary((String) newsData.get("summary"));
             news.setSlug(helperService.toSlug((String)newsData.get("title")));
             news.setImageUrl((String) newsData.get("imageUrl"));
-            if((Boolean) newsData.get("published")){
-                news.setPublished((Boolean) newsData.get("published"));
+            Boolean published = (Boolean) newsData.get("published");
+            if(Boolean.TRUE.equals(published)){
+                news.setPublished(published);
                 news.setStatus(News.Status.PUBLISHED);
             }
-            if((Boolean) newsData.get("isRealtime")){
+            
+            Boolean isRealtime = (Boolean) newsData.get("isRealtime");
+            if(Boolean.TRUE.equals(isRealtime)){
                 news.setRealtime(true);
             }
-            news.setFeatured((Boolean) newsData.get("featured"));
+            
+            Boolean featured = (Boolean) newsData.get("featured");
+            news.setFeatured(Boolean.TRUE.equals(featured));
 
             Integer authorId = Integer.valueOf(newsData.get("authorId").toString());
                 User author = userRepository.findById(authorId.longValue())

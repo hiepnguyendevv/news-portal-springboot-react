@@ -128,6 +128,12 @@ function App() {
                 <EditNews />
               </AdminRoute>
             } />
+
+            <Route path="/admin/live-news/:newsId" element={
+              <AdminRoute>
+                <LiveNewsDashboard />
+              </AdminRoute>
+            } />
             
             <Route path="/admin/users" element={
               <AdminRoute>

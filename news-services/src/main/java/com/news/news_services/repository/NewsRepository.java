@@ -46,6 +46,10 @@ public interface NewsRepository extends JpaRepository<News, Long> {
 
     // Lấy tin tức của user theo authorId
     List<News> findByAuthorIdOrderByCreatedAtDesc(Long authorId);
+    
+    // Xóa tin tức theo authorId
+    @Modifying
+    void deleteByAuthorId(Long authorId);
 
     Page<News> findByPublishedTrueOrderByViewCountDesc(Pageable pageable);
 
