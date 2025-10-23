@@ -19,7 +19,7 @@ const Login = () => {
 
   const handleGoogleLogin = () => {
     // Redirect to Spring Boot OAuth2 endpoint
-    window.location.href = 'http://localhost:8080/oauth2/authorization/google';
+    window.location.href = '/oauth2/authorization/google';
   };
 
   const handleChange = (e) => {
@@ -135,7 +135,7 @@ const Login = () => {
                 </button>
               </form>
 
-              <div className="text-center mb-3">
+              {/* <div className="text-center mb-3">
                 <div className="position-relative">
                   <hr />
                   <span className="position-absolute top-50 start-50 translate-middle bg-white px-3 text-muted">
@@ -152,7 +152,7 @@ const Login = () => {
               >
                 <i className="fab fa-google me-2"></i>
                 Đăng nhập với Google
-              </button>
+              </button> */}
               
 
               <div className="text-center">

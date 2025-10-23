@@ -54,7 +54,7 @@ public class AdminNewsController {
 
     @Autowired
     private TagService tagService;
-    // Lấy tất cả tin tức
+    //lấy tất cả tin tức
     @GetMapping
     public Page<News> getAllNews(@RequestParam(defaultValue = "0")int page,
                                  @RequestParam(defaultValue = "20")int size) {
@@ -84,7 +84,7 @@ public class AdminNewsController {
     public ResponseEntity<?> createNews(@RequestBody Map<String, Object> newsData) {
 
         try {
-            //Tạo News entity mới
+            //tạo news entity mới
             System.out.println("isRealtime:" + (Boolean)newsData.get("isRealtime"));
             System.out.println("published:" + (Boolean)newsData.get("published"));
             News news = new News();
@@ -173,7 +173,7 @@ public class AdminNewsController {
         }
     }
 
-    // Xóa news
+    //xóa news
     @Transactional
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteNews(@PathVariable Long id) {
@@ -189,7 +189,7 @@ public class AdminNewsController {
         return ResponseEntity.ok("News deleted successfully");
     }
 
-    //UpdateStatus
+    //update status
     @PutMapping("/{id}/status")
     public ResponseEntity<?> updateNewsStatus(@PathVariable Long id, @RequestBody Map<String, Object> statusData) {
         try {
@@ -233,7 +233,7 @@ public class AdminNewsController {
         }
     }
 
-    // Bulk delete news
+    //bulk delete news
     @DeleteMapping("/bulk")
     @Transactional
     public ResponseEntity<?> bulkDeleteNews(@RequestParam List<Long> newsIds) {
@@ -246,12 +246,12 @@ public class AdminNewsController {
             int deletedCount = 0;
             for (Long id : newsIds) {
                 if (newsRepository.existsById(id)) {
-                    // Xóa phụ thuộc
+                    //xóa phụ thuộc
                     commentLikesRepository.deleteByNewsId(id);
                     commentRepository.deleteByNewsId(id);
                     bookmarkRepository.deleteByNewsId(id);
                     
-                    // Xóa news
+                    //xóa news
                     newsRepository.deleteById(id);
                 }
             }
@@ -266,7 +266,7 @@ public class AdminNewsController {
         }
     }
 
-    // Bulk approve news
+    //bulk approve news
     @PutMapping("/bulk/approve")
     @Transactional
     public ResponseEntity<?> bulkApproveNews(@RequestParam List<Long> newsIds) {

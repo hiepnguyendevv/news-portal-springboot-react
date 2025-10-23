@@ -171,10 +171,7 @@ const NewsDetail = () => {
               </small>
             </div>
             <div>
-              <button className="btn btn-outline-primary me-2">
-                <i className="fas fa-share me-1"></i>
-                Chia sẻ
-              </button>
+
               
                 <BookmarkButton newsId={news.id}/>
             </div>

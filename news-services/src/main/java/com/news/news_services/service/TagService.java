@@ -53,10 +53,10 @@ public class TagService {
             return;
         }
         
-        // Xóa tất cả tags cũ của news này
+        //xóa tất cả tags cũ của news 
         newsTagRepository.deleteByNewsId(newsId);
         
-        // Thêm tags mới
+        //thêm tags mới
         for(String tagName : tagNames){
             if(tagName != null && !tagName.trim().isEmpty()){
                 Tag tag = findOrCreateTag(tagName);

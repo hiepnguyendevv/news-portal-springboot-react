@@ -34,7 +34,7 @@ public class NewsController {
     @Autowired
     private TagService tagService;
 
-    // Test kết nối database
+    //test kết nối database
     @GetMapping("/test")
     public String testConnection() {
         return newsService.testConnection();
@@ -43,7 +43,7 @@ public class NewsController {
 
 
 
-    // Lấy tin tức theo ID (kiểm tra role để quyết định hiển thị)
+    //lấy tin tức theo id 
     @GetMapping("/{id}")
     public ResponseEntity<?> getNewsById(@PathVariable Long id) {
         try {
@@ -55,13 +55,13 @@ public class NewsController {
         }
     }
 
-    // Lấy tin tức đã xuất bản
+    //lấy tin tức đã xuất bản
     @GetMapping("/published")
     public List<News> getPublishedNews() {
         return newsService.getPublishedNews();
     }
 
-    // Lấy tin tức đã xuất bản với phân trang
+    //lấy tin tức đã xuất bản với phân trang
     @GetMapping("/published/paged")
     public ResponseEntity<?> getPublishedNewsPaged(@RequestParam(defaultValue = "0") int page,
                                                   @RequestParam(defaultValue = "12") int size) {
@@ -72,19 +72,19 @@ public class NewsController {
         }
     }
 
-    // Lấy tin tức theo category
+    //lấy tin tức theo category
     @GetMapping("/category/{category}")
     public List<News> getNewsByCategory(@PathVariable String category) {
         return newsService.getNewsByCategory(category);
     }
 
-    // Lấy tin tức theo category slug
+    //lấy tin tức theo category slug
     @GetMapping("/category/slug/{slug}")
     public List<News> getNewsByCategorySlug(@PathVariable String slug) {
         return newsService.getNewsByCategorySlug(slug);
     }
 
-    //Lấy tin tức sắp xếp theo view count
+    //lấy tin tức sắp xếp theo view count
     @GetMapping("/view-desc")
     public Page<News> getNewsSortByViewDesc(@RequestParam(defaultValue = "0")int page,
                                             @RequestParam(defaultValue = "20")int size){
@@ -99,28 +99,26 @@ public class NewsController {
 
         return newsService.getNewsSortByViewAsc(pageable);
     }
-    // Tìm kiếm tin tức theo từ khóa
+    //tìm kiếm tin tức theo từ khóa
     @GetMapping("/search")
     public List<News> searchNews(@RequestParam String keyword) {
         return newsService.searchNews(keyword);
     }
 
 
-    // Import dữ liệu mẫu
+    //import dữ liệu mẫu
     @PostMapping("/import-data")
     public Map<String, Object> importSampleData() {
         return newsService.importSampleData();
     }
 
-    // Xóa tất cả dữ liệu
+    //xóa tất cả dữ liệu
     @PostMapping("/clear-all-data")
     public Map<String, Object> clearAllData() {
         return newsService.clearAllData();
     }
 
-    // ========== MY NEWS ENDPOINTS ==========
-    
-    // Lấy tin tức của user hiện tại
+    //lấy tin tức của user hiện tại
     @GetMapping("/my-news")
     public ResponseEntity<?> getMyNews() {
         try {
@@ -131,7 +129,7 @@ public class NewsController {
         }
     }
 
-    // Tác giả gửi bài để duyệt
+    //tác giả gửi bài để duyệt
     @PostMapping("/my-news/{id}/submit")
     public ResponseEntity<?> submitMyNewsForReview(@PathVariable Long id)   {
         try {
@@ -143,7 +141,7 @@ public class NewsController {
         }
     }
 
-    // Tạo tin tức mới (cho user)
+    //tạo tin tức mới (cho user)
     @PostMapping("/my-news")
     public ResponseEntity<?> createMyNews(@RequestBody Map<String, Object> newsData) {
         try {
@@ -154,7 +152,7 @@ public class NewsController {
         }
     }
 
-    // Cập nhật tin tức của user
+    //cập nhật tin tức của user
     @PutMapping("/my-news/{id}")
     public ResponseEntity<?> updateMyNews(@PathVariable Long id, @RequestBody Map<String, Object> newsData) {
         try {
@@ -165,7 +163,7 @@ public class NewsController {
         }
     }
 
-    // Xóa tin tức của NEWS
+    //xóa tin tức của 
     @DeleteMapping("/my-news/{id}")
     public ResponseEntity<?> deleteMyNews(@PathVariable Long id) {
         try {
@@ -177,7 +175,7 @@ public class NewsController {
         }
     }
 
-    //Đếm view
+    //đếm view count
     @PostMapping("/{id}/view")
     public ResponseEntity<Map<String, Object>> incrementView(HttpServletRequest request, @PathVariable Long id){
         Long newCount = newsService.incrementViewWithVisitorData(

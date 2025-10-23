@@ -17,7 +17,7 @@ public class UserController {
 
     @Autowired
     private UserService userService;
-    // Lấy tất cả users
+    //lấy tất cả users
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
         try {
@@ -28,7 +28,7 @@ public class UserController {
         }
     }
 
-    // Lấy user theo ID
+    //lấy user theo id
     @GetMapping("/{id}")
     public ResponseEntity<User> getUserById(@PathVariable Long id) {
         try {
@@ -43,7 +43,7 @@ public class UserController {
         }
     }
 
-    // Tạo user mới
+    //tạo user mới
     @PostMapping
     public ResponseEntity<?> createUser(@RequestBody Map<String, Object> userData) {
         try {
@@ -59,7 +59,7 @@ public class UserController {
         }
     }
 
-    // Cập nhật user
+    //cập nhật user
     @PutMapping("/{id}")
     public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody Map<String, Object> userData) {
         try {
@@ -77,7 +77,7 @@ public class UserController {
 
 
 
-    // Xóa user với cascade delete
+    //xóa user với cascade delete
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteUser(@PathVariable Long id) {
         try {
@@ -96,7 +96,7 @@ public class UserController {
         }
     }
     
-    // Soft delete user (vô hiệu hóa thay vì xóa thật)
+    //soft delete user 
     @DeleteMapping("/{id}/soft")
     public ResponseEntity<?> softDeleteUser(@PathVariable Long id) {
         try {
@@ -104,7 +104,7 @@ public class UserController {
                 return ResponseEntity.notFound().build();
             }
 
-            // Sử dụng soft delete thay vì xóa thật
+            //sử dụng soft delete   
             userService.softDeleteUser(id);
             
             return ResponseEntity.ok()
@@ -116,7 +116,7 @@ public class UserController {
         }
     }
 
-    // Cập nhật trạng thái user
+    //cập nhật trạng thái user
     @PatchMapping("/{id}/status")
     public ResponseEntity<?> updateUserStatus(@PathVariable Long id, @RequestBody Map<String, Object> statusData) {
         try {
@@ -128,7 +128,7 @@ public class UserController {
         }
     }
 
-    // Bulk delete users
+    //bulk delete users
     @DeleteMapping("/bulk")
     public ResponseEntity<?> bulkDeleteUsers(@RequestParam List<Long> userIds) {
         try {
@@ -156,7 +156,7 @@ public class UserController {
         }
     }
 
-    // Bulk update user status
+    //bulk update user status
     @PatchMapping("/bulk/status")
     public ResponseEntity<?> bulkUpdateUserStatus(@RequestParam List<Long> userIds, @RequestParam String status) {
         try {

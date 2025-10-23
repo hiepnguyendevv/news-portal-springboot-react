@@ -16,14 +16,14 @@ import java.util.Optional;
 @Repository
 public interface NewsRepository extends JpaRepository<News, Long> {
 
-    // Tìm tin đã xuất bản
+    //tìm tin đã xuất bản       
     List<News> findByPublishedTrueOrderByCreatedAtDesc();
     
-    // Tìm tin đã xuất bản với phân trang
+    //tìm tin đã xuất bản với phân trang
     Page<News> findByPublishedTrueOrderByCreatedAtDesc(Pageable pageable);
 
 
-    // Tìm kiếm
+    //tìm kiếm
     @Query("SELECT n FROM News n WHERE n.published = true AND " +
             "(LOWER(n.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(n.content) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
@@ -34,7 +34,7 @@ public interface NewsRepository extends JpaRepository<News, Long> {
     @Query("SELECT n FROM News n JOIN n.category c WHERE n.published = true AND c.name = :categoryName ORDER BY n.createdAt DESC")
     List<News> findByCategoryNameAndPublishedTrueOrderByCreatedAtDesc(@Param("categoryName") String categoryName);
 
-    // Lấy news theo category slug
+    //lấy news theo category slug
     @Query("SELECT n FROM News n JOIN n.category c WHERE n.published = true AND c.slug = :categorySlug ORDER BY n.createdAt DESC")
     List<News> findByCategorySlugAndPublishedTrueOrderByCreatedAtDesc(@Param("categorySlug") String categorySlug);
 
@@ -44,10 +44,10 @@ public interface NewsRepository extends JpaRepository<News, Long> {
     @Query("UPDATE News n SET n.viewCount = n.viewCount + 1 WHERE n.id = :id")
             int incrementViewCount(@Param("id") Long id);
 
-    // Lấy tin tức của user theo authorId
+    //lấy tin tức của user theo authorId
     List<News> findByAuthorIdOrderByCreatedAtDesc(Long authorId);
     
-    // Xóa tin tức theo authorId
+    //xóa tin tức theo authorId
     @Modifying
     void deleteByAuthorId(Long authorId);
 
@@ -57,8 +57,7 @@ public interface NewsRepository extends JpaRepository<News, Long> {
 
     Page<News> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
-    // Admin search with optional filters
-    @Query("""
+    //search
     SELECT n FROM News n
     WHERE (:q IS NULL OR LOWER(n.title) LIKE LOWER(CONCAT('%', :q, '%'))
        OR LOWER(n.content) LIKE LOWER(CONCAT('%', :q, '%')))

@@ -35,9 +35,7 @@ public class CommentController {
 
     @PostMapping
     public CommentWithRepliesDto createComment(@RequestBody CreateCommentRequest request, Authentication auth){
-        if (auth == null || auth.getPrincipal() == null) {
-            throw new RuntimeException("User not authenticated");
-        }
+        
         
         Long userId = ((UserPrincipal)auth.getPrincipal()).getId();
         

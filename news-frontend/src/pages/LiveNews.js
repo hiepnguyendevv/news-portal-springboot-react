@@ -99,7 +99,7 @@ export default function LiveNews() {
         const loadInitialData = async () => {
             try {
                 // Load live content
-                const res = await fetch(`http://localhost:8080/api/live-content/news/${newsId}?page=0&size=50`);
+                const res = await fetch(`/api/live-content/news/${newsId}?page=0&size=50`);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const page = await res.json();
                 if (page?.content) {
@@ -112,7 +112,7 @@ export default function LiveNews() {
                 }
 
                 // Load news detail
-                const newsRes = await fetch(`http://localhost:8080/api/news/${newsId}`);
+                const newsRes = await fetch(`/api/news/${newsId}`);
                 if (newsRes.ok) {
                     const newsData = await newsRes.json();
                     setNews(newsData);
@@ -124,7 +124,7 @@ export default function LiveNews() {
 
         const connect = () => {
             const client = new Client({
-                webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
+                webSocketFactory: () => new SockJS('/ws'),
                 reconnectDelay: 5000,
                 debug: () => {},
             });

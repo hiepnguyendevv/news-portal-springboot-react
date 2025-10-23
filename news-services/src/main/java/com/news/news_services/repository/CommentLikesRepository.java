@@ -24,6 +24,6 @@ public interface CommentLikesRepository extends JpaRepository<CommentLike,Long> 
     @Query("delete from CommentLike cl where cl.comment.news.id = :newsId")
     void deleteByNewsId(@Param("newsId") Long newsId);
     
-    // Xóa tất cả CommentLike của user
+    //xóa tất cả CommentLike của user
     void deleteByUserId(Long userId);
 }

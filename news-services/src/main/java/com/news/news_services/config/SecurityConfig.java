@@ -63,10 +63,17 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
+        configuration.setAllowedOrigins(Arrays.asList(
+            "http://localhost:3000", 
+            "https://hiepnguyen.click", 
+            "https://www.hiepnguyen.click",
+            "http://150.95.109.169:3000",
+            "http://150.95.109.169",
+            "http://hiepnguyen.click"
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE","PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setAllowCredentials(true); // Quan trọng: cho phép credentials
+        configuration.setAllowCredentials(true); 
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
@@ -105,7 +112,7 @@ public class SecurityConfig {
                     System.out.println("=== Configuring OAuth2 Login ===");
                     oauth2.loginPage("/login")
                             .successHandler(oAuth2LoginSuccessHandler)
-                            .failureUrl("http://localhost:3000/login?error=fail");
+                            .failureUrl("https://hiepnguyen.click/login?error=fail");
                 });
 
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

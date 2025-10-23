@@ -34,21 +34,21 @@ public class CommentService {
 
     @Transactional
     public List<CommentWithRepliesDto> getAllCommentsForNews(Long newsId, Long userId) {
-        // Lấy tất cả comments của news (bao gồm cả replies) theo path
+        //lấy tất cả comments của news (bao gồm cả replies) theo path
         List<Comment> allComments = commentRepository.findByNews(newsId);
         
-        // Lấy root comments
+        //lấy root comments
         List<Comment> rootComments = commentRepository.findByNewsAndParentIsNullOrderByCreatedAtDesc(
             newsRepository.findById(newsId).orElseThrow()
         );
         
-        // Xử lý từng root comment và replies của nó
+        //xử lý từng root comment và replies của nó
         return rootComments.stream().map(rootComment -> {
-            // Lấy tất cả replies của root comment này
+            //lấy tất cả replies của root comment này
             String pathPrefix = rootComment.getPath() + ".%";
             List<Comment> replies = commentRepository.findByPathStartingWith(pathPrefix);
 
-            // Convert replies thành DTO
+            //convert replies thành DTO
             List<CommentWithRepliesDto> replyDtos = replies.stream()
                 .map(reply -> {
                             CommentWithRepliesDto dto = CommentWithRepliesDto.from(reply,List.of());
@@ -75,9 +75,9 @@ public class CommentService {
                     rootDto.setLiked(false);
                 }
             } else {
-                rootDto.setLiked(false); // User chưa đăng nhập
+                rootDto.setLiked(false); //user chưa đăng nhập
             }
-            // Tạo DTO cho root comment với replies
+            //tạo DTO cho root comment với replies
             return rootDto;
         }).toList();
     }
@@ -91,11 +91,11 @@ public class CommentService {
 
     @Transactional
     public List<Comment> getReplies(Long parentId){
-        // Lấy comment gốc để có path
+        //lấy comment gốc để có path
         Comment parentComment = commentRepository.findById(parentId).orElseThrow(() -> new RuntimeException("Comment not found with id: " + parentId));
         String pathPrefix = parentComment.getPath() + ".%";
         
-        // Lấy tất cả replies theo Materialized Path (bao gồm nested replies)
+        //lấy tất cả replies theo 
         return commentRepository.findByPathStartingWith(pathPrefix);
     }
 
@@ -121,12 +121,12 @@ public class CommentService {
 
         comment = commentRepository.save(comment);
         
-        // Set path dựa trên parent
+        //set path dựa trên parent
         if(comment.getParent() == null){
-            // Root comment
+            //root comment
             comment.setPath(String.valueOf(comment.getId()));
         } else {
-            // Reply comment
+            //reply comment
             comment.setPath(comment.getParent().getPath() + "." + comment.getId());
         }
 

@@ -8,13 +8,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface LiveContentRepository extends JpaRepository<LiveContent,Long> {
-    // Tìm tất cả live content của một bài news, sắp xếp theo thời gian tạo
+    //tìm tất cả live content của một bài news, sắp xếp theo thời gian tạo
      List<LiveContent> findByNewsIdOrderByCreatedAtDesc(Long newsId);
-    // Tìm live content với phân trang
+    //tìm live content với phân trang
     Page<LiveContent> findByNewsIdOrderByCreatedAtDesc(Long newsId, Pageable pageable);
-    // Đếm số lượng live content của một bài news
+    //đếm số lượng live content của một bài news
     Integer countByNewsId(Long newsId);
-    // Tìm live content được pin
+    //tìm live content được pin
     List<LiveContent> findByNewsIdAndEntryStatusOrderByCreatedAtDesc(Long newsId, LiveContent.EntryStatus entryStatus);
 
     void deleteById(Long id);

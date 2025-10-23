@@ -15,21 +15,21 @@ import java.util.List;
 
 public interface CommentRepository extends JpaRepository<Comment, Long> {
 
-    //Lấy comment gốc
+    //lấy comment gốc
     List<Comment> findByNewsAndParentIsNullOrderByCreatedAtDesc(News news);
 
-    //Lấy replies theo comment gốc
+    //lấy replies theo comment gốc
     List<Comment> findByParentIdOrderByCreatedAtDesc(Long parentId);
 
-    //Lấy tất cả con cháu của comment
+    //lấy tất cả con cháu của comment
     @Query("SELECT c FROM Comment c where c.path LIKE :pathPattern ORDER BY c.path ASC")
     List<Comment> findByPathStartingWith(@Param("pathPattern") String pathPattern);
 
-    //Lấy comment theo độ sâu
+    //lấy comment theo độ sâu
     @Query("Select c from Comment c where c.news.id = :newsId and c.depth = :depth Order by c.path ASC")
     List<Comment> findByNewsIdAndDepth(@Param("newsId") Long newsId, @Param("depth") Integer depth);
 
-    //Lấy tất cả các comment của tin tức, sắp xếp theo path
+    //lấy tất cả các comment của tin tức, sắp xếp theo path
     @Query("Select c from Comment c where c.news.id = :newsId order by c.path ASC")
     List<Comment> findByNews(@Param("newsId") Long newsId);
 

@@ -1,0 +1,66 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: hiep2003
+      MYSQL_DATABASE: news_database
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - news-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: news-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      - news-network
+    restart: unless-stopped
+
+  #Backend
+  news-services:
+    image: hiepnguyenvr/news-services:latest
+    container_name: news-backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+      - redis
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - DB_URL=jdbc:mysql://mysql:3306/news_database?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - DB_USERNAME=root
+      - DB_PASSWORD=hiep2003
+      - APP_JWT_SECRET=ku79FtBewk9K1GxMG28ei5ibcHgTKmlYxhExM3Z/NlE=
+      - APP_JWT_EXPIRATION_MS=86400000
+      - GOOGLE_CLIENT_ID=1030616159354-cmak9tk048bqcnn2ckqv6136bqif1g0f.apps.googleusercontent.com
+      - GOOGLE_CLIENT_SECRET=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
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - news-network
+    restart: unless-stopped
+
+  #Frontend
+  news-frontend:
+    image: hiepnguyenvr/news-frontend:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - news-services
+    networks:
+      - news-network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+
+networks:
+  news-network:
+    driver: bridge

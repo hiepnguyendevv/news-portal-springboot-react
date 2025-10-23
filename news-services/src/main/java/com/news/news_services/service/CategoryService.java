@@ -27,7 +27,7 @@ public class CategoryService {
         return categoryRepository.findBySlugAndIsActiveTrue(slug);
     }
 
-    // Lấy subcategories theo parent slug
+    //lấy subcategories theo parent slug
     public List<Category> getSubcategoriesByParentSlug(String parentSlug) {
         Optional<Category> parent = categoryRepository.findBySlugAndIsActiveTrue(parentSlug);
         if (parent.isPresent()) {

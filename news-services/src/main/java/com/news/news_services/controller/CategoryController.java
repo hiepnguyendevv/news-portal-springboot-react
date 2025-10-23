@@ -15,7 +15,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/category")
-@CrossOrigin(origins = "http://localhost:3000")
+// @CrossOrigin(origins = "http://localhost:3000")
 public class CategoryController {
 
     @Autowired
@@ -47,13 +47,13 @@ public class CategoryController {
         return category;
     }
 
-    // Lấy subcategories theo parent slug
+    //lấy subcategories theo parent slug
     @GetMapping("/subcategories/{parentSlug}")
     public List<Category> getSubcategoriesByParent(@PathVariable String parentSlug) {
         return categoryService.getSubcategoriesByParentSlug(parentSlug);
     }
 
-    // Lấy tất cả categories
+    //lấy tất cả categories
     @GetMapping("/all/active")
     public List<Category> getAllCategoriesIsActive() {
         return categoryService.getAllActiveCategories();

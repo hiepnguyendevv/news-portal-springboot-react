@@ -22,7 +22,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "http://localhost:3000")
+// @CrossOrigin(origins = "http://localhost:3000")
 public class  AuthController {
 
     @Autowired
@@ -157,12 +157,12 @@ public class  AuthController {
                 user.setEmail(newEmail);
             }
 
-            // Update full name
+            //update full name
             if (updateData.containsKey("fullName")) {
                 user.setFullName((String) updateData.get("fullName"));
             }
 
-            // Update phone
+            //update phone
             if (updateData.containsKey("phone")) {
                 user.setPhone((String) updateData.get("phone"));
             }

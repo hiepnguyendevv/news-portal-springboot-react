@@ -42,48 +42,32 @@ public class UserService {
 
       @Transactional
    public void deleteUserWithCascade(Long userId) {
-       // 1. Xóa CommentLike trước (vì có FK tới Comment)
+       //xóa CommentLike 
        commentLikesRepository.deleteByUserId(userId);
        
-       // 2. Xóa Bookmark
+       //xóa Bookmark
        bookmarkRepository.deleteByUserId(userId);
        
-       // 3. Xóa Notification
+       //xóa Notification
        notificationRepository.deleteByRecipientId(userId);
        
-       // 4. Lấy danh sách news của user trước khi xóa
        List<News> userNews = newsRepository.findByAuthorIdOrderByCreatedAtDesc(userId);
        
-       // 5. Xóa tất cả comment liên quan đến news của user này
-       for (News news : userNews) {
-           // Xóa CommentLike của news trước
-           commentLikesRepository.deleteByNewsId(news.getId());
-           // Sau đó xóa comment của news
-           commentRepository.deleteByNewsId(news.getId());
-       }
-       
-       // 6. Xóa comment của user (nếu có comment không thuộc news của user)
-       // Xóa CommentLike của user trước
-       commentLikesRepository.deleteByUserId(userId);
-       // Sau đó xóa comment của user
+       //xóa comment của user
        commentRepository.deleteByUserId(userId);
        
-       // 7. Xóa tất cả bookmarks liên quan đến news của user
-       for (News news : userNews) {
-           bookmarkRepository.deleteByNewsId(news.getId());
-       }
        
-       // 8. Xóa NewsTag của news của user
+       //xóa NewsTag của news của user
        for (News news : userNews) {
            newsTagRepository.deleteByNewsId(news.getId());
        }
        
-       // 9. Xóa News của user (xóa từng news một)
+       //xóa News của user 
        for (News news : userNews) {
            newsRepository.deleteById(news.getId());
        }
        
-       // 9. Cuối cùng xóa User
+       //xóa User
        userRepository.deleteById(userId);
    }
 
@@ -93,7 +77,6 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Đánh dấu user là INACTIVE thay vì xóa
         user.setStatus(User.UserStatus.INACTIVE);
         userRepository.save(user);
 

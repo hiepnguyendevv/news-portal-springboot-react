@@ -22,7 +22,7 @@ const LiveNewsDashboard = () => {
 
   useEffect(() => {
         const connect = () => {
-        const socket = new SockJS('http://localhost:8080/ws');
+        const socket = new SockJS('/ws');
         const client = new Client({
           webSocketFactory: () => socket,
                 debug: () => {},
@@ -85,7 +85,7 @@ const LiveNewsDashboard = () => {
     useEffect(() => {
         const loadInitialData = async () => {
             try {
-                const res = await fetch(`http://localhost:8080/api/live-content/news/${newsId}?page=0&size=20`);
+                const res = await fetch(`/api/live-content/news/${newsId}?page=0&size=20`);
                 if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
                 const data = await res.json();
                 setEntries(data.content);

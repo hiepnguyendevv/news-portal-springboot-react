@@ -11,16 +11,16 @@ import java.util.Optional;
 public interface CategoryRepository extends JpaRepository<Category, Long>{
 
 
-    //Tìm danh mục gốc
+    //tìm danh mục gốc
     List<Category> findByParentIsNullAndIsActiveTrueOrderBySortOrder();
 
-    //Tìm danh mục con theo parent
+            //tìm danh mục con theo parent
     List<Category> findByParentAndIsActiveTrueOrderBySortOrder(Category parent);
 
-    //Tìm theo slug
+    //tìm theo slug
     Optional<Category> findBySlugAndIsActiveTrue(String slug);
 
-    //lấy toàn bộ
+    //lấy toàn bộ danh mục
     @Query("select c from Category c where c.isActive = true order by c.level, c.sortOrder")
     List<Category> findAllActiveOrderBySortAndLevel();
 

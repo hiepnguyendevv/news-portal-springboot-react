@@ -50,7 +50,7 @@ public class Oauth2Controller {
             user = userRepository.save(user);
         }
 
-        // Tạo JWT token
+        //tạo jwt token
         String jwtToken = jwtUtil.generateTokenFromUsername(user.getUsername());
         
         JwtResponse jwtResponse = new JwtResponse();

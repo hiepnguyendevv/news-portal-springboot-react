@@ -12,24 +12,24 @@ import java.util.List;
 @Repository
 public interface NewsTagRepository extends JpaRepository<NewsTag, Long> {
 
-    // Tìm tất cả NewsTag theo news ID
+    //tìm tất cả NewsTag theo news id 
     List<NewsTag> findByNewsId(Long newsId);
 
-    // Tìm tất cả NewsTag theo tag ID
+    //tìm tất cả NewsTag theo tag id
     List<NewsTag> findByTagId(Long tagId);
 
-    // Xóa NewsTag theo news ID và tag ID
+    //xóa NewsTag theo news id và tag id
     void deleteByNewsIdAndTagId(Long newsId, Long tagId);
 
     void deleteByTagId(Long tagId);
 
-    // Kiểm tra xem NewsTag đã tồn tại chưa
+    //kiểm tra xem NewsTag đã tồn tại chưa
     boolean existsByNewsIdAndTagId(Long newsId, Long tagId);
 
-    // Xóa tất cả NewsTag theo news ID
+    //xóa tất cả NewsTag theo news id
     void deleteByNewsId(Long newsId);
 
-    // Tìm tin tức theo tag ID
+    //tìm tin tức theo tag id
     @Query("SELECT nt.news FROM NewsTag nt WHERE nt.tag.id = :tagId AND nt.news.published = true")
     List<NewsTag> findPublishedNewsByTagId(@Param("tagId") Long tagId);
 

@@ -34,7 +34,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
         // Chỉ redirect về frontend
-        String targetUrl = "http://localhost:3000/oauth2/callback";
+        String targetUrl = "https://hiepnguyen.click/oauth2/callback/google";
         response.sendRedirect(targetUrl);
     }}
 

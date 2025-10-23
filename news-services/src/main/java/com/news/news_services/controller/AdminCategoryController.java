@@ -74,7 +74,6 @@ public class AdminCategoryController {
             category.setSortOrder(Integer.valueOf(categoryData.get("sortOrder").toString()));
             category.setIsActive((Boolean) categoryData.get("isActive"));
 
-            // Handle parent update
             Object parentIdObj = categoryData.get("parentId");
             if (parentIdObj != null && !parentIdObj.toString().isEmpty()) {
                 Long parentId = Long.parseLong(parentIdObj.toString());
@@ -97,7 +96,6 @@ public class AdminCategoryController {
     @DeleteMapping("/{id}")
     String deleteCategory(@PathVariable Long id) {
 
-//        Long categoryId = Long.parseLong(id);
 
         if(!categoryRepository.existsById(id)){
             throw new RuntimeException("Category not found with id: " + id);
@@ -107,7 +105,7 @@ public class AdminCategoryController {
         return "Category deleted successfully";
     }
 
-    // Bulk delete categories
+    //bulk delete categories
     @DeleteMapping("/bulk")
     public ResponseEntity<?> bulkDeleteCategories(@RequestParam List<Long> categoryIds) {
         try {
