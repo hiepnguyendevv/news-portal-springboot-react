@@ -13,28 +13,33 @@ const LiveEntry = ({ entry }) => (
         </p>
         <div className="entry-body">
             {entry.content && (
-                <p className="mb-3" style={{
-                    wordBreak: 'break-word',
-                    overflowWrap: 'break-word',
-                    hyphens: 'auto',
-                    maxWidth: '100%'
-                }}>{entry.content}</p>
+                <div
+                    className="mb-3"
+                    style={{
+                        wordBreak: 'break-word',
+                        overflowWrap: 'break-word',
+                        hyphens: 'auto',
+                        maxWidth: '100%'
+                    }}
+                    dangerouslySetInnerHTML={{ __html: entry.content }}
+                />
             )}
             
             {entry.mediaUrl && (
                 <div className="my-3">
-                    {/* Kiểm tra loại media dựa trên URL */}
-                    {entry.mediaUrl.includes('youtube.com') || entry.mediaUrl.includes('youtu.be') || entry.mediaUrl.includes('vimeo.com') ? (
-                        <div className="ratio ratio-16x9">
-                            <iframe title={`video-${entry.id}`} src={entry.mediaUrl} allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-                        </div>
-                    ) : entry.mediaUrl.includes('twitter.com') || entry.mediaUrl.includes('x.com') ? (
-                        <a href={entry.mediaUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline-secondary btn-sm">Xem trên Twitter/X</a>
-                    ) : (
-                        <figure className="figure">
-                            <img src={entry.mediaUrl} alt="Nội dung tường thuật" className="figure-img img-fluid rounded" />
-                        </figure>
-                    )}
+                    {(() => {
+                        const url = entry.mediaUrl;
+                        const isVideo = /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url) || url.includes('/video/');
+                        const mediaStyle = { width: '100%', height: 'auto', maxHeight: '800px', objectFit: 'contain' };
+                        if (isVideo) {
+                            return (
+                                <video src={url} controls className="rounded" style={mediaStyle} />
+                            );
+                        }
+                        return (
+                            <img src={url} alt="Nội dung tường thuật" className="rounded" style={mediaStyle} />
+                        );
+                    })()}
                 </div>
             )}
         </div>

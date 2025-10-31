@@ -1,26 +1,27 @@
 package com.news.news_services.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.news.news_services.dto.NewsCreateDto;
+import com.news.news_services.dto.NewsResponseDto;
 import com.news.news_services.entity.Category;
 import com.news.news_services.entity.News;
 import com.news.news_services.entity.User;
 import com.news.news_services.repository.*;
-import com.news.news_services.service.HelperService;
-import com.news.news_services.service.NewsService;
-import com.news.news_services.service.NotificationService;
-import com.news.news_services.service.TagService;
+import com.news.news_services.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
 @RestController
 @RequestMapping("/api/admin/news")
-//@CrossOrigin(origins = "http://localhost:3000")
 public class AdminNewsController {
     @Autowired
     private NewsService newsService;
@@ -54,6 +55,11 @@ public class AdminNewsController {
 
     @Autowired
     private TagService tagService;
+
+    @Autowired
+    private CloudinaryService cloudinaryService;
+
+
     //lấy tất cả tin tức
     @GetMapping
     public Page<News> getAllNews(@RequestParam(defaultValue = "0")int page,
@@ -80,94 +86,80 @@ public class AdminNewsController {
     }
 
     //tạo news
-    @PostMapping
-    public ResponseEntity<?> createNews(@RequestBody Map<String, Object> newsData) {
-
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> createMyNews(@RequestPart("image") MultipartFile imageFile,
+                                          @RequestPart("news") String newJson) {
         try {
-            //tạo news entity mới
-            System.out.println("isRealtime:" + (Boolean)newsData.get("isRealtime"));
-            System.out.println("published:" + (Boolean)newsData.get("published"));
-            News news = new News();
-            news.setTitle((String) newsData.get("title"));
-            news.setContent((String) newsData.get("content"));
-            news.setSummary((String) newsData.get("summary"));
-            news.setSlug(helperService.toSlug((String)newsData.get("title")));
-            news.setImageUrl((String) newsData.get("imageUrl"));
-            Boolean published = (Boolean) newsData.get("published");
-            if(Boolean.TRUE.equals(published)){
-                news.setPublished(published);
-                news.setStatus(News.Status.PUBLISHED);
-            }
-            
-            Boolean isRealtime = (Boolean) newsData.get("isRealtime");
-            if(Boolean.TRUE.equals(isRealtime)){
-                news.setRealtime(true);
-            }
-            
-            Boolean featured = (Boolean) newsData.get("featured");
-            news.setFeatured(Boolean.TRUE.equals(featured));
 
-            Integer authorId = Integer.valueOf(newsData.get("authorId").toString());
-                User author = userRepository.findById(authorId.longValue())
-                        .orElseThrow(() -> new RuntimeException("User not found with id: " + authorId));
-                news.setAuthor(author);
+            // === BƯỚC DEBUG 1: In ra JSON ===
+            System.out.println("------------------------------------");
+            System.out.println("Received newsJson string:");
+            System.out.println(newJson); // In chuỗi JSON nhận được
+            System.out.println("------------------------------------");
+            String imageUrl = cloudinaryService.uploadFile(imageFile);
 
+            ObjectMapper mapper = new ObjectMapper();
+            NewsCreateDto newsDto = mapper.readValue(newJson,NewsCreateDto.class);
 
-            Integer categoryId = Integer.valueOf(newsData.get("categoryId").toString());
-                Category category = categoryRepository.findById(categoryId.longValue())
-                        .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
-                news.setCategory(category);
+            News savedNewsEntity = newsService.createMyNews(newsDto, imageUrl);
 
-
-            News savedNews = newsRepository.save(news);
-
-            @SuppressWarnings("unchecked")
-            List<String> tags = (List<String>) newsData.get("tags");
-
-            tagService.assignToNews(news.getId(),tags);
-            return ResponseEntity.ok(savedNews);
-
+            NewsResponseDto responseDTO = new NewsResponseDto(savedNewsEntity);// Pass DTO and URL
+            return ResponseEntity.ok(responseDTO);
         } catch (Exception e) {
-            System.err.println("Error creating news: " + e.getMessage());
+            System.err.println("Error creating my news: " + e.getMessage());
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
 
-    //update news
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateNews(@PathVariable Long id, @RequestBody Map<String, Object> newsData) {
+
+
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> updateNews(@PathVariable Long id,
+                                        @RequestPart(value = "image", required = false) MultipartFile imageFile,
+                                        @RequestPart("news") String newJson) { // Đã sửa tên biến thành newJson
+
+        // === BƯỚC DEBUG 1: In ra JSON ===
+        System.out.println("------------------------------------");
+        System.out.println("Received newsJson string:");
+        System.out.println(newJson); // In chuỗi JSON nhận được
+        System.out.println("------------------------------------");
+
         try {
-            News news = newsRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("News not found with id: " + id));
-
-            news.setTitle((String) newsData.get("title"));
-            news.setContent((String) newsData.get("content"));
-            news.setSummary((String) newsData.get("summary"));
-            news.setImageUrl((String) newsData.get("imageUrl"));
-            news.setPublished((Boolean) newsData.get("published"));
-            news.setFeatured((Boolean) newsData.get("featured"));
-            if (Boolean.TRUE.equals(news.getPublished())) {
-                news.setStatus(News.Status.PUBLISHED);
-            }
-            if (newsData.containsKey("reviewNote")) {
-                news.setReviewNote((String) newsData.get("reviewNote"));
+            String imageUrl = null;
+            if (imageFile != null && !imageFile.isEmpty()) {
+                System.out.println("Attempting to upload new image..."); // Thêm log
+                imageUrl = cloudinaryService.uploadFile(imageFile);
+                System.out.println("Upload ảnh mới thành công, URL: " + imageUrl);
+            } else {
+                System.out.println("No new image file provided."); // Thêm log
             }
 
-            if (newsData.containsKey("categoryId")) {
-                Integer categoryId = Integer.valueOf(newsData.get("categoryId").toString());
-                Category category = categoryRepository.findById(categoryId.longValue())
-                        .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
-                news.setCategory(category);
+            ObjectMapper mapper = new ObjectMapper();
+            NewsCreateDto newsDto = null; // Khởi tạo là null
+
+            // === BƯỚC DEBUG 2: Bắt lỗi Deserialization ===
+            try {
+                newsDto = mapper.readValue(newJson, NewsCreateDto.class);
+                System.out.println("Tạo newsDto thành công!"); // Log thành công
+                // In ra nội dung DTO để kiểm tra
+                System.out.println("Parsed News DTO: " + newsDto.toString()); // Cần @ToString hoặc tự in các trường
+            } catch (Exception e) {
+                System.err.println("!!! LỖI KHI PARSE JSON SANG NewsCreateDto !!!");
+                e.printStackTrace(); // In ra toàn bộ lỗi Jackson chi tiết
+                // Trả về lỗi 400 ngay lập tức với thông tin lỗi
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Lỗi định dạng dữ liệu gửi lên: " + e.getMessage()));
             }
+            // === HẾT BƯỚC DEBUG 2 ===
 
+            // Nếu parse thành công, tiếp tục gọi service
+            News existingNews = newsService.updateMyNews(id, newsDto, imageUrl);
+            NewsResponseDto responseDTO = new NewsResponseDto(existingNews);
+            return ResponseEntity.ok(responseDTO);
 
-            News updatedNews = newsRepository.save(news);
-            List<String> tags = (List<String>) newsData.get("tags");
-
-            tagService.assignToNews(news.getId(),tags);
-            return ResponseEntity.ok(updatedNews);
-
-        } catch (Exception e) {
+        } catch (Exception e) { // Bắt các lỗi khác (ví dụ: lỗi service)
+            System.err.println("!!! LỖI TRONG QUÁ TRÌNH UPDATE NEWS !!!");
+            e.printStackTrace();
             return ResponseEntity.badRequest()
                     .body(Map.of("error", "Lỗi khi cập nhật tin tức: " + e.getMessage()));
         }
@@ -180,12 +172,13 @@ public class AdminNewsController {
         if (!newsRepository.existsById(id)) {
             throw new RuntimeException("News not found with id: " + id);
         }
+        News news = newsRepository.findById(id).orElseThrow();
+
         commentLikesRepository.deleteByNewsId(id);
         commentRepository.deleteByNewsId(id);
-//        newsTagRepository.deleteByNewsId(id);
         bookmarkRepository.deleteByNewsId(id);
 
-        newsRepository.deleteById(id);
+        newsService.deleteMyNews(id);
         return ResponseEntity.ok("News deleted successfully");
     }
 
@@ -243,16 +236,15 @@ public class AdminNewsController {
                     .body(Map.of("error", "Danh sách ID tin tức không được để trống"));
             }
 
-            int deletedCount = 0;
             for (Long id : newsIds) {
                 if (newsRepository.existsById(id)) {
                     //xóa phụ thuộc
                     commentLikesRepository.deleteByNewsId(id);
                     commentRepository.deleteByNewsId(id);
                     bookmarkRepository.deleteByNewsId(id);
-                    
+
                     //xóa news
-                    newsRepository.deleteById(id);
+                    newsService.deleteMyNews(id);
                 }
             }
 

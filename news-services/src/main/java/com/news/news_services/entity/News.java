@@ -190,7 +190,6 @@ public class News {
         this.published = published;
         if(published && publishedAt == null) {
             this.publishedAt = LocalDateTime.now();
-
         }
     }
 

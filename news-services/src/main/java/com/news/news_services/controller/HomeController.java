@@ -11,7 +11,7 @@ import java.util.Map;
 import java.security.Principal;
 
 @RestController
-public class HomeController {
+public class    HomeController {
     @RequestMapping
     public String home(){
         return "welcome";

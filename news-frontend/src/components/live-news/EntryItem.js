@@ -3,6 +3,8 @@
 import React from 'react';
 
 const EntryItem = ({ entry, onEdit, onTogglePin, onDelete }) => {
+    const mediaStyle = { width: '100%', height: 'auto', maxHeight: '800px', objectFit: 'contain' };
+  
     return (
         <div className="card mb-3 shadow-sm">
             <div className={`card-body ${entry.entryStatus === 'PINNED' ? 'border-start border-5 border-warning' : ''}`}>
@@ -20,16 +22,21 @@ const EntryItem = ({ entry, onEdit, onTogglePin, onDelete }) => {
                     
                     {entry.mediaUrl && (
                         <div className="mt-2">
-                            {/* Kiểm tra loại media dựa trên URL */}
-                            {entry.mediaUrl.includes('youtube.com') || entry.mediaUrl.includes('youtu.be') || entry.mediaUrl.includes('vimeo.com') ? (
-                                <div className="ratio ratio-16x9">
-                                    <iframe title={`video-${entry.id}`} src={entry.mediaUrl} allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-                                </div>
-                            ) : entry.mediaUrl.includes('twitter.com') || entry.mediaUrl.includes('x.com') ? (
-                                <a href={entry.mediaUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline-primary btn-sm">Xem trên Twitter/X</a>
-                            ) : (
-                                <img src={entry.mediaUrl} alt="Live content" className="img-fluid rounded" />
-                            )}
+                            {(() => {
+                                const url = entry.mediaUrl;
+                                const isVideoByExt = /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url);
+                                const isCloudinaryVideo = url.includes('/video/');
+
+                                if (isVideoByExt || isCloudinaryVideo) {
+                                    return (
+                                        <video src={url} controls className="rounded" style={mediaStyle} />
+                                    );
+                                }
+
+                                return (
+                                    <img src={url} alt="Live content" className="rounded" style={mediaStyle} />
+                                );
+                            })()}
                         </div>
                     )}
                 </div>

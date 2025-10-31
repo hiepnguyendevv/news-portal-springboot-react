@@ -14,12 +14,12 @@ public class NewsTag {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "news_id")
-    @JsonBackReference
+    @JsonBackReference("news-newsTags")
     private News news;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tag_id")
-    @JsonBackReference
+    @JsonBackReference("tag-newsTags")
     private Tag tag;
 
     @Column(name = "created_at")

@@ -42,7 +42,7 @@ public interface NewsRepository extends JpaRepository<News, Long> {
 
     @Modifying
     @Query("UPDATE News n SET n.viewCount = n.viewCount + 1 WHERE n.id = :id")
-            int incrementViewCount(@Param("id") Long id);
+    int incrementViewCount(@Param("id") Long id);
 
     //lấy tin tức của user theo authorId
     List<News> findByAuthorIdOrderByCreatedAtDesc(Long authorId);
@@ -58,14 +58,13 @@ public interface NewsRepository extends JpaRepository<News, Long> {
     Page<News> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
     //search
-    SELECT n FROM News n
-    WHERE (:q IS NULL OR LOWER(n.title) LIKE LOWER(CONCAT('%', :q, '%'))
-       OR LOWER(n.content) LIKE LOWER(CONCAT('%', :q, '%')))
-      AND (:categoryId IS NULL OR n.category.id = :categoryId)
-      AND (:published IS NULL OR n.published = :published)
-      AND (:status IS NULL OR n.status = :status)
-      AND (:featured IS NULL OR n.featured = :featured)
-    """)
+    @Query("SELECT n FROM News n " +
+            "WHERE (:q IS NULL OR LOWER(n.title) LIKE LOWER(CONCAT('%', :q, '%')) " +
+            "   OR LOWER(n.content) LIKE LOWER(CONCAT('%', :q, '%'))) " +
+            "  AND (:categoryId IS NULL OR n.category.id = :categoryId) " +
+            "  AND (:published IS NULL OR n.published = :published) " +
+            "  AND (:status IS NULL OR n.status = :status) " +
+            "  AND (:featured IS NULL OR n.featured = :featured)")
     Page<News> adminSearch(
             @Param("q") String q,
             @Param("categoryId") Long categoryId,

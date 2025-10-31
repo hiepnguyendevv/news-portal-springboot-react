@@ -15,10 +15,6 @@ const LiveNewsDashboard = () => {
   const [editingEntry, setEditingEntry] = useState(null);
   const clientRef = useRef(null);
 
-  const [content, setContent] = useState('');
-  const [mediaUrl, setMediaUrl] = useState('');
-  const [pin, setPin] = useState(false);
-  const [sortOrder, setSortOrder] = useState('');
 
   useEffect(() => {
         const connect = () => {
@@ -86,7 +82,10 @@ const LiveNewsDashboard = () => {
         const loadInitialData = async () => {
             try {
                 const res = await fetch(`/api/live-content/news/${newsId}?page=0&size=20`);
-                if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(`HTTP ${res.status}: ${text.slice(0,200)}`);
+                  }
                 const data = await res.json();
                 setEntries(data.content);
             } catch (err) {
@@ -99,20 +98,12 @@ const LiveNewsDashboard = () => {
         }
     }, [newsId]);
 
-    const sendEntry = () => {
+    const sendEntry = (payload) => {
         if (!clientRef.current?.active) {
             console.error("Client is not connected.");
             return;
         }
 
-        const payload = {
-            action:'ADD_ENTRY',
-            content: content,
-            contentType: 'TEXT',
-            entryStatus: pin ? 'PINNED' : 'PUBLISHED',
-            mediaUrl: mediaUrl || null,
-            sortOrder: sortOrder ? Number(sortOrder) : null,
-    };
 
         clientRef.current.publish({
             destination: `/app/live/${newsId}/addEntry`,
@@ -120,21 +111,26 @@ const LiveNewsDashboard = () => {
             
       });
 
-      setContent('');
-      setMediaUrl('');
-      setPin(false);
-      setSortOrder('');
+  
     };
 
   
 
     const onEdit = (entry) => {
+        // === DEBUG 1: KIỂM TRA NGUỒN ===
+        console.log('--- DEBUG 1: Mở Modal ---');
+        console.log('Dữ liệu gốc (entry) được truyền vào:', entry);
+        if (entry.content) {
+            console.log('Nội dung gốc CÓ tồn tại:', entry.content.substring(0, 50) + '...'); // In 50 ký tự đầu
+        } else {
+            console.error('LỖI: Nội dung gốc (entry.content) là RỖNG hoặc NULL');
+        }
+        // === KẾT THÚC DEBUG 1 ===
         setEditingEntry(entry);
         setShowEditModal(true);
     };
 
     const onSaveEdit = (updatedEntry) => {
-        // Gửi update qua WebSocket
         if (clientRef.current?.active) {
             const payload = {
                 action:'UPDATE_ENTRY',
@@ -142,9 +138,14 @@ const LiveNewsDashboard = () => {
                 content: updatedEntry.content,
                 contentType: 'TEXT',
                 entryStatus: updatedEntry.entryStatus,
-                mediaUrl: updatedEntry.mediaUrl,
+                mediaUrl: updatedEntry.mediaUrl,    
                 sortOrder: updatedEntry.sortOrder,
             };
+
+            // === DEBUG: KIỂM TRA PAYLOAD CUỐI CÙNG ===
+            console.log('--- LiveNewsDashboard: onSaveEdit ---');
+            console.log('Payload sắp gửi qua WS:', JSON.stringify(payload, null, 2));
+            // === KẾT THÚC DEBUG ===
 
             clientRef.current.publish({
                 destination: `/app/live/${newsId}/updateEntry`,
@@ -179,18 +180,15 @@ const LiveNewsDashboard = () => {
         }
     };
 
-    // Đóng gói props cho form
-    const formState = { content, mediaUrl, pin, sortOrder };
-    const formHandlers = { setContent, setMediaUrl, setPin, setSortOrder };
+
 
   return (
       <div className="container py-4">
           
           <EntryForm
-              data={formState}
-              handlers={formHandlers}
               onSubmit={sendEntry}
               isConnected={isConnected}
+              newsId={newsId}
           />
           
           <EntryList

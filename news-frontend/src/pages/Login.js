@@ -37,7 +37,6 @@ const Login = () => {
     const result = await login(formData);
     
     if (result.success) {
-      //  Redirect based on user role
       if (result.user.role === 'ADMIN') {
         navigate('/admin');
       } else {
@@ -135,7 +134,7 @@ const Login = () => {
                 </button>
               </form>
 
-              {/* <div className="text-center mb-3">
+              <div className="text-center mb-3">
                 <div className="position-relative">
                   <hr />
                   <span className="position-absolute top-50 start-50 translate-middle bg-white px-3 text-muted">
@@ -152,7 +151,7 @@ const Login = () => {
               >
                 <i className="fab fa-google me-2"></i>
                 Đăng nhập với Google
-              </button> */}
+              </button>
               
 
               <div className="text-center">

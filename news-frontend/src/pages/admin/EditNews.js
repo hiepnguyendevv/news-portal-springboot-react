@@ -1,32 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '../../components/AuthContext';
-import { newsAPI } from '../../services/api';
+import { newsAPI } from '../../services/api'; 
 import { toast } from 'react-toastify';
-import LiveNewsDashboard from './LiveNewsDashboard';
+import LiveNewsDashboard from './LiveNewsDashboard'; 
+import { Editor } from '@tinymce/tinymce-react';
+
 const EditNews = () => {
   const [formData, setFormData] = useState({
-    title: '',
-    summary: '',
-    content: '',
-    categoryId: '',
-    imageUrl: '',
-    published: false,
-    featured: false
-  });
+    title: '', summary: '', content: '', categoryId: '', published: false, featured: false, tags: [] });
+  const [initialContent, setInitialContent] = useState('');
+
   const [categories, setCategories] = useState([]);
+  const [tags, setTags] = useState([]);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const editorRef = useRef(null); 
 
-  const { user } = useAuth();
   const navigate = useNavigate();
   const { newsId } = useParams();
 
   useEffect(() => {
     fetchNewsData();
     fetchCategories();
+    fetchTags();
   }, [newsId]);
 
   const fetchNewsData = async () => {
@@ -34,23 +32,24 @@ const EditNews = () => {
       setPageLoading(true);
       const response = await newsAPI.getNewsById(newsId);
       const news = response.data;
-      console.log('News data:', news);
+      
+      const processedTags = news.tags ? 
+        news.tags.map(tag => typeof tag === 'object' ? tag.name : tag) : [];
       
       setFormData({
         title: news.title || '',
         summary: news.summary || '',
-        content: news.content || '',
+        content: news.content || '', 
         categoryId: news.category?.id || '',
-        imageUrl: news.imageUrl || '',
         published: news.published || false,
         featured: news.featured || false,
-        realtime: news.realtime || false
+        tags: processedTags
       });
+      setImagePreviewUrl(news.imageUrl || '');
     } catch (err) {
-      setError('Không thể tải thông tin tin tức');
       console.error('Error fetching news:', err);
     } finally {
-      setPageLoading(false);
+      setPageLoading(false); 
     }
   };
 
@@ -60,6 +59,15 @@ const EditNews = () => {
       setCategories(response.data);
     } catch (err) {
       console.error('Error fetching categories:', err);
+    }
+   };
+
+  const fetchTags = async () => {
+    try {
+      const response = await newsAPI.getAllTags();
+      setTags(response.data || []);
+    } catch (err) {
+      console.error('Error fetching tags:', err);
     }
   };
 
@@ -71,36 +79,57 @@ const EditNews = () => {
     }));
   };
 
+  const handleToggleTag = (tagName) => { 
+    setFormData(prev => {
+      if (prev.tags.includes(tagName)) {
+        return { ...prev, tags: prev.tags.filter(name => name !== tagName) };
+      } else {
+        return { ...prev, tags: [...prev.tags, tagName] };
+      }
+    });
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    setImageFile(file);
+    if (file) {
+      setImagePreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.title || !formData.content || !formData.categoryId) {
-      setError('Vui lòng điền đầy đủ thông tin bắt buộc');
+    let currentContent = '';
+    if (editorRef.current) { 
+      currentContent = editorRef.current.getContent(); 
+    } else {
+      currentContent = formData.content; 
+    }
+  
+    if (!formData.title || !currentContent || !formData.categoryId || !formData.tags.length) {
+      toast.warning('Vui lòng điền đầy đủ thông tin bắt buộc');
       return;
     }
 
     setLoading(true);
-    setError('');
     
     try {
-      // Gọi API cập nhật tin tức
-      const newsData = {
-        ...formData,
-        authorId: user.id
-      };
-      
-      console.log('Updating news with data:', newsData);
-      const response = await newsAPI.updateNews(newsId, newsData);
-      // setSuccess('Cập nhật tin tức thành công!');
-      toast.success('Cập nhật tin tức thành công');
+      const formDataToSend = new FormData();
+      if (imageFile) {
+        formDataToSend.append('image', imageFile);
+      }
 
-      // setTimeout(() => {
-        navigate('/admin/news');
-      // }, 2000);
+      const newsData = { ...formData, content: currentContent }; 
+      formDataToSend.append('news', JSON.stringify(newsData));
+      
+      const response = await newsAPI.updateNews(newsId, formDataToSend);
+      toast.success('Cập nhật tin tức thành công');
+      navigate('/admin/news'); 
 
     } catch (err) {
-      // setError('Có lỗi xảy ra khi cập nhật tin tức: ' + (err.response?.data?.message || err.message));
       toast.error('Có lỗi xảy ra khi cập nhật tin tức');
+      console.error("Update error:", err.response?.data || err.message);
     } finally {
       setLoading(false);
     }
@@ -121,7 +150,7 @@ const EditNews = () => {
     );
   }
 
-  if(formData.realtime) {
+  if(formData.realtime) { 
     return <LiveNewsDashboard />;
   }
 
@@ -143,20 +172,6 @@ const EditNews = () => {
             </button>
           </div>
 
-          {error && (
-            <div className="alert alert-danger" role="alert">
-              <i className="fas fa-exclamation-circle me-2"></i>
-              {error}
-            </div>
-          )}
-
-          {success && (
-            <div className="alert alert-success" role="alert">
-              <i className="fas fa-check-circle me-2"></i>
-              {success}
-            </div>
-          )}
-
           <div className="card">
             <div className="card-header">
               <h5 className="mb-0">Thông tin tin tức</h5>
@@ -165,7 +180,6 @@ const EditNews = () => {
               <form onSubmit={handleSubmit}>
                 <div className="row">
                   <div className="col-md-8">
-                    {/* Title */}
                     <div className="mb-3">
                       <label htmlFor="title" className="form-label">
                         Tiêu đề <span className="text-danger">*</span>
@@ -182,7 +196,6 @@ const EditNews = () => {
                       />
                     </div>
 
-                    {/* Summary */}
                     <div className="mb-3">
                       <label htmlFor="summary" className="form-label">
                         Tóm tắt
@@ -198,26 +211,37 @@ const EditNews = () => {
                       />
                     </div>
 
-                    {/* Content */}
                     <div className="mb-3">
-                      <label htmlFor="content" className="form-label">
+                      <label htmlFor="content-editor" className="form-label">
                         Nội dung <span className="text-danger">*</span>
                       </label>
-                      <textarea
-                        className="form-control"
-                        id="content"
-                        name="content"
-                        rows="10"
-                        value={formData.content}
-                        onChange={handleChange}
-                        placeholder="Nhập nội dung chi tiết tin tức..."
-                        required
-                      />
+
+                      {!pageLoading && ( 
+                        <Editor
+                          id="content-editor"
+                          apiKey='29h0bkhxlcdk5pu2h6wc6b0mtk6rpojdadtsvvv1af739dym' 
+                          onInit={(evt, editor) => editorRef.current = editor}
+                          initialValue={formData.content} 
+                          init={{
+                            height: 350,
+                            menubar: false,
+                            placeholder: "Nhập nội dung chi tiết tin tức...",
+                            plugins: [
+                              'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+                              'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                              'insertdatetime', 'media', 'table', 'help', 'wordcount', 'textcolor'
+                            ],
+                            toolbar: 'undo redo | blocks | code | bold italic forecolor backcolor | alignleft aligncenter ' +
+                              'alignright alignjustify | bullist numlist outdent indent | ' +
+                              'link image media | removeformat | help',
+                            
+                          }}
+                        />
+                      )}
                     </div>
                   </div>
 
                   <div className="col-md-4">
-                    {/* Category */}
                     <div className="mb-3">
                       <label htmlFor="categoryId" className="form-label">
                         Danh mục <span className="text-danger">*</span>
@@ -239,34 +263,50 @@ const EditNews = () => {
                       </select>
                     </div>
 
-                    {/* Image URL */}
                     <div className="mb-3">
-                      <label htmlFor="imageUrl" className="form-label">
-                        URL hình ảnh
+                      <label htmlFor="imageFile" className="form-label">
+                        Ảnh bìa (Thay đổi)
                       </label>
                       <input
-                        type="url"
+                        type="file"
                         className="form-control"
-                        id="imageUrl"
-                        name="imageUrl"
-                        value={formData.imageUrl}
-                        onChange={handleChange}
-                        placeholder="https://example.com/image.jpg"
+                        id="imageFile"
+                        accept="image/png, image/jpeg, image/jpg"
+                        name="imageFile"
+                        onChange={handleFileChange}
                       />
-                      {formData.imageUrl && (
+                      {imagePreviewUrl && (
                         <img 
-                          src={formData.imageUrl} 
+                          src={imagePreviewUrl} 
                           alt="Preview" 
                           className="img-thumbnail mt-2"
                           style={{ maxWidth: '200px', maxHeight: '150px' }}
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                          }}
+                          onError={(e) => { e.target.style.display = 'none'; }}
                         />
                       )}
                     </div>
 
-                    {/* Options */}
+                    <div className="mb-3">
+                      <label htmlFor="tags" className="form-label">
+                        Tags <span className="text-danger">*</span>
+                      </label>
+                      <div className="d-flex flex-wrap gap-2">
+                        {tags.map(tag => {
+                          const selected = formData.tags.includes(tag.name);
+                          return (
+                            <button
+                              key={tag.id}
+                              type="button"
+                              className={`btn btn-sm ${selected ? 'btn-primary' : 'btn-outline-secondary'}`}
+                              onClick={() => handleToggleTag(tag.name)}
+                            >
+                              {tag.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
                     <div className="mb-3">
                       <div className="form-check">
                         <input
@@ -282,7 +322,6 @@ const EditNews = () => {
                         </label>
                       </div>
                     </div>
-
                     <div className="mb-3">
                       <div className="form-check">
                         <input
@@ -299,7 +338,6 @@ const EditNews = () => {
                       </div>
                     </div>
 
-                    {/* Submit Button */}
                     <div className="d-grid">
                       <button
                         type="submit"
@@ -319,6 +357,7 @@ const EditNews = () => {
                         )}
                       </button>
                     </div>
+
                   </div>
                 </div>
               </form>

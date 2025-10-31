@@ -69,7 +69,8 @@ public class SecurityConfig {
             "https://www.hiepnguyen.click",
             "http://150.95.109.169:3000",
             "http://150.95.109.169",
-            "http://hiepnguyen.click"
+            "http://hiepnguyen.click",
+                "http://localhost:3001"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE","PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
@@ -82,7 +83,6 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        System.out.println("=== Configuring Security Filter Chain ===");
         
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
@@ -109,7 +109,6 @@ public class SecurityConfig {
                                 .anyRequest().authenticated()
                         )
                 .oauth2Login(oauth2 -> {
-                    System.out.println("=== Configuring OAuth2 Login ===");
                     oauth2.loginPage("/login")
                             .successHandler(oAuth2LoginSuccessHandler)
                             .failureUrl("https://hiepnguyen.click/login?error=fail");

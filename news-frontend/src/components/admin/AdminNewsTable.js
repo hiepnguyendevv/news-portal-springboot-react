@@ -82,7 +82,7 @@ const AdminNewsTable = ({ items, onEdit, onTogglePublish, onToggleFeatured, onDe
               <td>{new Date(item.createdAt).toLocaleDateString('vi-VN')}</td>
               <td>
                 <div className="btn-group btn-group-sm">
-                  <button className="btn btn-outline-info" onClick={() => onEdit(item.id)} title="Chỉnh sửa">
+                    <button className="btn btn-outline-info" onClick={() => onEdit(item)} title="Chỉnh sửa">
                     <i className="fas fa-edit"></i>
                   </button>
                   <button

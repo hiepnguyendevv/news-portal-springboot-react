@@ -1,46 +1,46 @@
 package com.news.news_services.service;
 
-import com.news.news_services.entity.News;
-import com.news.news_services.entity.Category;
-import com.news.news_services.entity.User;
-import com.news.news_services.entity.Tag;
-import com.news.news_services.entity.NewsTag;
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
+import com.news.news_services.dto.NewsCreateDto;
+import com.news.news_services.entity.*;
+import com.news.news_services.repository.LiveContentRepository;
 import com.news.news_services.repository.NewsRepository;
 import com.news.news_services.repository.CategoryRepository;
 import com.news.news_services.repository.UserRepository;
-import com.news.news_services.repository.CommentRepository;
-import com.news.news_services.repository.BookmarkRepository;
-import com.news.news_services.repository.NewsTagRepository;
-import com.news.news_services.repository.TagRepository;
-import com.news.news_services.repository.NotificationRepository;
-import com.news.news_services.repository.CommentLikesRepository;
+
 import com.news.news_services.security.UserPrincipal;
+import org.jsoup.Jsoup;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.jsoup.safety.Safelist;
+
+import java.io.IOException;
 import java.time.Duration;
 
-import com.news.news_services.service.HelperService;
-import com.news.news_services.service.TagService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
 public class NewsService {
 
+    private static final Logger logger = LoggerFactory.getLogger(NewsService.class);
     @Autowired
     private HelperService helperService;
 
@@ -54,7 +54,8 @@ public class NewsService {
     private UserRepository userRepository;
 
     @Autowired
-    private PasswordEncoder passwordEncoder;
+    private LiveContentRepository liveContentRepository;
+
 
     @Autowired
     private StringRedisTemplate redis;
@@ -62,23 +63,9 @@ public class NewsService {
     @Autowired
     private TagService tagService;
 
-    @Autowired
-    private CommentRepository commentRepository;
 
     @Autowired
-    private BookmarkRepository bookmarkRepository;
-
-    @Autowired
-    private NewsTagRepository newsTagRepository;
-
-    @Autowired
-    private TagRepository tagRepository;
-
-    @Autowired
-    private NotificationRepository notificationRepository;
-
-    @Autowired
-    private CommentLikesRepository commentLikesRepository;
+    private Cloudinary cloudinary;
 
     public List<News> getAllNews() {
         return newsRepository.findAll();
@@ -95,7 +82,7 @@ public class NewsService {
         }
         return null;
     }
-    
+
     // Lấy tin tức theo ID (chỉ trả về news đã published) - backward compatibility
     public News getNewsById(Long id) {
         return getNewsById(id, false);
@@ -145,13 +132,7 @@ public class NewsService {
         return newsRepository.findByPublishedTrueOrderByViewCountAsc(pageable);
     }
 
-    @Transactional
-    public Long incrementViewCount(Long id){
-        int newCnt = newsRepository.incrementViewCount(id);
-        if(newCnt == 0) return null;
 
-        return newsRepository.findById(id).map(News::getViewCount).orElse(null);
-    }
 
     @Transactional
     public Long  incrementViewCountWithCoolDown(Long newsId, String visitorKey, Duration ttl){
@@ -178,7 +159,7 @@ public class NewsService {
         }
         return incrementViewCountWithCoolDown(newsId, visitorKey, Duration.ofMinutes(1));
     }
-    
+
 
 
     public Page<News> adminSearchNews(String filter, Long categoryId, String q, String sortBy, int page, int size) {
@@ -253,75 +234,108 @@ public class NewsService {
     }
 
     @Transactional
-    public News createMyNews(Map<String, Object> newsData) {
+    public News createMyNews(NewsCreateDto newsDto,String imageUrl) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
-
-        News news = new News();
-        news.setTitle((String) newsData.get("title"));
-        news.setContent((String) newsData.get("content"));
-        news.setSummary((String) newsData.get("summary"));
-        news.setSlug(helperService.toSlug((String) newsData.get("title")));
-        news.setImageUrl((String) newsData.get("imageUrl"));
-        news.setPublished(false);
-        news.setFeatured(false);
-        news.setStatus(News.Status.DRAFT);
 
         User author = userRepository.findById(userPrincipal.getId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        news.setAuthor(author);
+        String rawHtmlContent = newsDto.getContent();
+        String content = Jsoup.clean(rawHtmlContent,Safelist.basicWithImages());
 
-        if (newsData.containsKey("categoryId")) {
-            Integer categoryId = Integer.valueOf(newsData.get("categoryId").toString());
-            Category category = categoryRepository.findById(categoryId.longValue())
-                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
-            news.setCategory(category);
+
+        // 2. Tạo đối tượng News Entity mới
+        News newsEntity = new News();
+
+        // 3. Map dữ liệu từ DTO sang Entity
+        newsEntity.setTitle(newsDto.getTitle());
+        newsEntity.setSummary(newsDto.getSummary());
+        newsEntity.setContent(content);
+        newsEntity.setImageUrl(imageUrl); // Set imageUrl from parameter
+        newsEntity.setRealtime(newsDto.isRealTime());
+
+
+        // 4. Thiết lập các thông tin khác
+        newsEntity.setAuthor(author);
+        newsEntity.setSlug(helperService.toSlug(newsDto.getTitle()));
+        // Use default values or values from DTO if provided
+        if(author.getRole().name() == "ADMIN"){
+            if(Boolean.TRUE.equals(newsDto.getPublished())){
+                newsEntity.setPublished(true);
+                newsEntity.setStatus(News.Status.PUBLISHED);
+            }
+            if(Boolean.TRUE.equals(newsDto.getFeatured())){
+                newsEntity.setFeatured(true);
+            }
+        }
+        newsEntity.setPublished(newsDto.getPublished() != null ? newsDto.getPublished() : false);
+        newsEntity.setFeatured(newsDto.getFeatured() != null ? newsDto.getFeatured() : false);
+        newsEntity.setStatus(newsDto.getPublished() != true ? News.Status.DRAFT : News.Status.PUBLISHED); // Or determine based on DTO.published
+
+        // 5. Xử lý Category
+            Category category = categoryRepository.findById(newsDto.getCategoryId())
+                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + newsDto.getCategoryId()));
+            newsEntity.setCategory(category);
+
+
+        // 6. Lưu Entity vào DB (để lấy ID)
+        News savedNews = newsRepository.save(newsEntity);
+
+        List<String> tagNames = newsDto.getTags();
+        if (tagNames != null && !tagNames.isEmpty()) {
+            tagService.assignToNews(savedNews.getId(), tagNames);
         }
 
-        News savedNews = newsRepository.save(news);
 
-        @SuppressWarnings("unchecked")
-        List<String> tags = (List<String>) newsData.get("tags");
-        tagService.assignToNews(savedNews.getId(), tags);
 
-        return savedNews;
+        return savedNews; // Return the saved Entity
     }
 
-    @Transactional
-    public News updateMyNews(Long id, Map<String, Object> newsData) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+        @Transactional
+        public News updateMyNews(Long id, NewsCreateDto newsDto, String imageUrl) {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
 
-        News news = newsRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("News not found with id: " + id));
+            News news = newsRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("News not found with id: " + id));
 
-        if (!news.getAuthor().getId().equals(userPrincipal.getId())) {
-            throw new RuntimeException("Bạn không có quyền chỉnh sửa tin tức này");
+            if (!news.getAuthor().getId().equals(userPrincipal.getId())) {
+                throw new RuntimeException("Bạn không có quyền chỉnh sửa tin tức này");
+            }
+            String rawHtmlContent = newsDto.getContent();
+            String content = Jsoup.clean(rawHtmlContent,Safelist.basicWithImages());
+
+            news.setTitle(newsDto.getTitle());
+            news.setContent(content);
+            news.setSummary(newsDto.getSummary());
+            if(imageUrl != null) {
+                String publicId = extractPublicIdFromUrl(news.getImageUrl());
+                try{
+                    cloudinary.uploader().destroy(publicId,ObjectUtils.emptyMap());
+                    news.setImageUrl(imageUrl);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+
+            }
+            news.setPublished(newsDto.getPublished() != null ? newsDto.getPublished() : false);
+            news.setFeatured(newsDto.getFeatured() != null ? newsDto.getFeatured() : false);
+
+                Category category = categoryRepository.findById(newsDto.getCategoryId())
+                        .orElseThrow(() -> new RuntimeException("Category not found"));
+                news.setCategory(category);
+
+
+            News updatedNews = newsRepository.save(news);
+            List<String> tagNames = newsDto.getTags();
+            if (tagNames != null && !tagNames.isEmpty()) {
+                tagService.assignToNews(id, tagNames);
+            }
+
+            return updatedNews;
         }
 
-        news.setTitle((String) newsData.get("title"));
-        news.setContent((String) newsData.get("content"));
-        news.setSummary((String) newsData.get("summary"));
-        news.setImageUrl((String) newsData.get("imageUrl"));
-        news.setPublished(false);
-        news.setFeatured(false);
-        news.setStatus(News.Status.DRAFT);
 
-        if (newsData.containsKey("categoryId")) {
-            Integer categoryId = Integer.valueOf(newsData.get("categoryId").toString());
-            Category category = categoryRepository.findById(categoryId.longValue())
-                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
-            news.setCategory(category);
-        }
-
-        News updatedNews = newsRepository.save(news);
-
-        @SuppressWarnings("unchecked")
-        List<String> tags = (List<String>) newsData.get("tags");
-        tagService.assignToNews(updatedNews.getId(), tags);
-
-        return updatedNews;
-    }
 
     @Transactional
     public void deleteMyNews(Long id) {
@@ -331,13 +345,67 @@ public class NewsService {
         News news = newsRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("News not found with id: " + id));
 
-        if (!news.getAuthor().getId().equals(userPrincipal.getId())) {
+
+        boolean isAdmin = authentication != null &&
+                authentication.getAuthorities().stream()
+                        .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin && !news.getAuthor().getId().equals(userPrincipal.getId())) {
             throw new RuntimeException("Bạn không có quyền xóa tin tức này");
         }
+
+
+        try {
+            String imageUrl = news.getImageUrl();
+            String publicId = extractPublicIdFromUrl(imageUrl);
+            if(publicId!=null){
+                cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+
+            }
+
+
+            if(news.isRealtime()){
+                String resourceType = "image";
+                List<LiveContent> liveContents = liveContentRepository.findByNewsId(id);
+
+                for(LiveContent lc : liveContents ){
+                    String url = lc.getMediaUrl();
+                    if(url != null){
+                        if (url.contains("/video/")) resourceType = "video";
+                        String idImg = extractPublicIdFromUrl(url);
+
+                        cloudinary.uploader().destroy(
+                                idImg,
+                                ObjectUtils.asMap("resource_type", resourceType, "invalidate", true)
+                        );
+
+                    }
+                    System.out.println("xóa image live content thành công");
+                        }
+
+            }
+
+
+        } catch (IOException e) {
+            // Ghi lại lỗi nhưng không dừng việc xóa bài viết trong DB
+            logger.error("Lỗi khi xóa ảnh trên Cloudinary cho news ID {}: {}", id, e.getMessage());
+
+        }
+
         newsRepository.deleteById(id);
     }
 
 
+
+    private String extractPublicIdFromUrl(String imageUrl) {
+        // Regex tìm phần sau /upload/v<số>/ cho đến trước dấu chấm cuối cùng (đuôi file)
+        Pattern pattern = Pattern.compile("/upload/(?:v\\d+/)?([^.]+?)(\\.\\w+)?$");
+        Matcher matcher = pattern.matcher(imageUrl);
+        if (matcher.find()) {
+            return matcher.group(1); // Trả về group 1 (phần public_id bao gồm cả folder nếu có)
+        }
+        return null; // Không tìm thấy
+    }
 
 
     // Test kết nối database
@@ -349,4 +417,5 @@ public class NewsService {
             return "Lỗi kết nối: " + e.getMessage();
         }
     }
+
 }

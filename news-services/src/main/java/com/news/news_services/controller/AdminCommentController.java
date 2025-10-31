@@ -87,6 +87,7 @@ public class AdminCommentController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> hardDeleteComment(@PathVariable Long id){
         try{
+
             commentService.deleteComment(id);
             return ResponseEntity.ok(Map.of("message", "Successfully deleted comment"));
         }catch (Exception e){

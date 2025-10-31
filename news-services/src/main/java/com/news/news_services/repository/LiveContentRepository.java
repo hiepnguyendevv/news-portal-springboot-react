@@ -17,6 +17,7 @@ public interface LiveContentRepository extends JpaRepository<LiveContent,Long> {
     //tìm live content được pin
     List<LiveContent> findByNewsIdAndEntryStatusOrderByCreatedAtDesc(Long newsId, LiveContent.EntryStatus entryStatus);
 
+    List<LiveContent> findByNewsId(Long newsId);
     void deleteById(Long id);
 
 }

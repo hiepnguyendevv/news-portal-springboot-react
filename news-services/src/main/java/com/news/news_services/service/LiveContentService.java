@@ -1,5 +1,7 @@
 package com.news.news_services.service;
 
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import com.news.news_services.dto.LiveNewsEvent;
 import com.news.news_services.entity.LiveContent;
 import com.news.news_services.entity.News;
@@ -7,6 +9,8 @@ import com.news.news_services.entity.User;
 import com.news.news_services.repository.LiveContentRepository;
 import com.news.news_services.repository.NewsRepository;
 import com.news.news_services.repository.UserRepository;
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Safelist;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,7 +18,11 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class LiveContentService {
@@ -28,6 +36,8 @@ public class LiveContentService {
     private NewsRepository newsRepository;
     @Autowired
     private RedisTemplate<String,Object> redisTemplate;
+    @Autowired
+    private Cloudinary cloudinary;
 
     public Page<LiveNewsEvent> getLivedContent(Long newsId, Pageable pageable) {
         Page<LiveContent> liveContents = liveContentRepository.findByNewsIdOrderByCreatedAtDesc(newsId,pageable);
@@ -37,11 +47,13 @@ public class LiveContentService {
     public LiveContent addContent(Long newsId, Long userId,LiveNewsEvent dto){
         News news = newsRepository.findById(newsId).orElseThrow();
         User user = userRepository.findById(userId).orElseThrow();
+        String rawHtmlContent = dto.getContent();
+        String content = Jsoup.clean(rawHtmlContent, Safelist.basicWithImages());
 
         LiveContent liveContent = new LiveContent();
         liveContent.setNews(news);
         liveContent.setUser(user);
-        liveContent.setContent(dto.getContent());
+        liveContent.setContent(content);
         liveContent.setContentType(LiveContent.ContentType.valueOf(dto.getContentType()));
         liveContent.setEntryStatus(LiveContent.EntryStatus.valueOf(dto.getEntryStatus()));
         liveContent.setMediaUrl(dto.getMediaUrl());
@@ -78,7 +90,35 @@ public class LiveContentService {
             LiveContent liveContent = liveContentRepository.findById(liveContentId)
                     .orElseThrow(() -> new RuntimeException("LỖI: Không tìm thấy entry: " + liveContentId));
 
-            liveContent.setContent(dto.getContent());
+            try{
+                String url = liveContent.getMediaUrl();
+                String resourceType = "image";
+                if (url != null) {
+                    if (url.contains("/video/")) resourceType = "video";
+                    else if (url.contains("/raw/")) resourceType = "raw";
+                    String publicId = extractPublicIdFromUrl(url);
+                    if (publicId != null) {
+                        cloudinary.uploader().destroy(
+                                publicId,
+                                ObjectUtils.asMap("resource_type", resourceType, "invalidate", true)
+                        );
+                        System.out.println("Xóa ảnh live content thành công");
+
+                    }
+                    System.out.println("Có ảnh");
+                }else{
+                    System.out.println("Không ảnh");
+
+                }
+
+
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            String rawHtmlContent = dto.getContent();
+            String content = Jsoup.clean(rawHtmlContent, Safelist.basicWithImages());
+
+            liveContent.setContent(content);
             liveContent.setMediaUrl(dto.getMediaUrl());
             liveContent.setEntryStatus(LiveContent.EntryStatus.valueOf(dto.getEntryStatus()));
             liveContent.setContentType(LiveContent.ContentType.valueOf(dto.getContentType()));
@@ -122,7 +162,24 @@ public class LiveContentService {
         if (!liveContent.getNews().getId().equals(newsId)) {
             throw new SecurityException("Hành động không được phép.");
         }
+        try{
+            String url = liveContent.getMediaUrl();
+            String resourceType = "image";
+            if (url != null) {
+                if (url.contains("/video/")) resourceType = "video";
+                else if (url.contains("/raw/")) resourceType = "raw";
+            }
 
+            String publicId = extractPublicIdFromUrl(url); // đảm bảo trả về không kèm đuôi
+            if (publicId != null) {
+                cloudinary.uploader().destroy(
+                        publicId,
+                        ObjectUtils.asMap("resource_type", resourceType, "invalidate", true)
+                );
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         liveContentRepository.delete(liveContent);
 
         LiveNewsEvent event = new LiveNewsEvent();
@@ -145,6 +202,16 @@ public class LiveContentService {
         newsEvent.setSortOrder(liveContent.getSortOrder());
         newsEvent.setCreatedAt(liveContent.getCreatedAt());
         return newsEvent;
+    }
+
+    private String extractPublicIdFromUrl(String imageUrl) {
+        // Regex tìm phần sau /upload/v<số>/ cho đến trước dấu chấm cuối cùng (đuôi file)
+        Pattern pattern = Pattern.compile("/upload/(?:v\\d+/)?([^.]+?)(\\.\\w+)?$");
+        Matcher matcher = pattern.matcher(imageUrl);
+        if (matcher.find()) {
+            return matcher.group(1); // Trả về group 1 (phần public_id bao gồm cả folder nếu có)
+        }
+        return null; // Không tìm thấy
     }
 
 

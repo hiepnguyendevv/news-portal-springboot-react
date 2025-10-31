@@ -1,10 +1,9 @@
 package com.news.news_services.security;
 
 import com.news.news_services.entity.User;
+import com.news.news_services.entity.User;
 import com.news.news_services.repository.UserRepository;
-import com.news.news_services.security.JwtUtil;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,8 +16,9 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.news.news_services.dto.JwtResponse;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 
 @Component
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
@@ -33,10 +33,42 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
-        // Chỉ redirect về frontend
-        String targetUrl = "https://hiepnguyen.click/oauth2/callback/google";
-        response.sendRedirect(targetUrl);
-    }}
+        if (authentication == null || authentication.getPrincipal() == null) {
+            response.sendRedirect("https://hiepnguyen.click/login?error=oauth2_failed");
+            return;
+        }
 
+        OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
+        String name = (String) oAuth2User.getAttributes().get("name");
+        String email = (String) oAuth2User.getAttributes().get("email");
+        String picture = (String) oAuth2User.getAttributes().get("picture");
+
+        Optional<User> existing = userRepository.findByEmail(email);
+        User user;
+        if (existing.isPresent()) {
+            user = existing.get();
+        } else {
+            user = new User();
+            user.setEmail(email);
+            user.setFullName(name);
+            user.setUsername(email);
+            user.setPassword("");
+            user.setStatus(User.UserStatus.ACTIVE);
+            user.setRole(User.UserRole.USER);
+            user.setAvatarUrl(picture);
+            user = userRepository.save(user);
+        }
+
+        // Tạo JWT token
+        String jwtToken = jwtUtil.generateTokenFromUsername(user.getUsername());
+        
+        // Redirect về frontend với token
+        String frontendUrl = System.getenv("FRONTEND_URL");
+        if (frontendUrl == null || frontendUrl.isEmpty()) {
+            frontendUrl = "https://hiepnguyen.click";
+        }
+        String redirectUrl = frontendUrl + "/oauth2/callback?token=" + URLEncoder.encode(jwtToken, StandardCharsets.UTF_8);
+        response.sendRedirect(redirectUrl);
+    }}
 
 

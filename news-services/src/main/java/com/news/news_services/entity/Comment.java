@@ -1,12 +1,15 @@
 package com.news.news_services.entity;
 
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "comments")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Comment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -17,14 +20,17 @@ public class Comment {
 
     @ManyToOne
     @JoinColumn(name = "news_id")
+    @JsonIgnore
     private News news;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "user_id")
+    @JsonIgnore
     private User user;
 
     @ManyToOne
     @JoinColumn(name = "parent_id")
+    @JsonIgnore
     private Comment parent;
 
     @Column(name = "path",length = 1000)
@@ -41,6 +47,7 @@ public class Comment {
 
     @ManyToOne
     @JoinColumn(name = "deleted_by")
+    @JsonIgnore
     private User deletedBy;
 
     @Column(name = "like_count", nullable = false)

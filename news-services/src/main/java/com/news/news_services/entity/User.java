@@ -51,21 +51,21 @@ public class User {
    @Column(name = "status", length = 20, nullable = false)
    private UserStatus status = UserStatus.ACTIVE;
 
-    @OneToMany(mappedBy = "author", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonIgnore
-    private List<News> newsList = new ArrayList<>();
+   @OneToMany(mappedBy = "author", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+   @JsonIgnore
+   private List<News> newsList = new ArrayList<>();
 
-    @Column(name = "email_verified")
-    private Boolean emailVerified = false;
+   @Column(name = "email_verified")
+   private Boolean emailVerified = false;
 
-    @Column(name = "last_login")
-    private LocalDateTime lastLogin;
+   @Column(name = "last_login")
+   private LocalDateTime lastLogin;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
+   @Column(name = "created_at")
+   private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+   @Column(name = "updated_at")
+   private LocalDateTime updatedAt;
 
     // Enum cho Role
     public enum UserRole {
@@ -133,14 +133,8 @@ public class User {
     public LocalDateTime getUpdatedAt() {return updatedAt;}
     public void setUpdatedAt(LocalDateTime updatedAt) {this.updatedAt = updatedAt;}
 
-    @PreUpdate
-    public void setLoadUpdate(){
-        this.updatedAt = LocalDateTime.now();
-    }
 
-    public boolean isAdmin(){
-        return role == UserRole.ADMIN;
-    }
+
 
 
 

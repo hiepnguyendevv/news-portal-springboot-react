@@ -16,21 +16,20 @@ const OAuth2Callback = () => {
   const handleOAuth2Callback = async () => {
     try {
 
-      const response = await newsAPI.googleLogin();
       
-      const token = response.data.token;
+      // Lấy token từ URL parameters (được gửi từ OAuth2LoginSuccessHandler)
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      
       
       if (token) {
         localStorage.setItem('token', token);
-        console.log("Token saved, getting user info...");
         
         // Gọi API để lấy thông tin user
         const me = await newsAPI.getCurrentUser();
         const payload = me.data;
         
-        console.log("User info:", payload);
         const result = await oauth2Login(token, payload);
-        console.log("OAuth2 login result:", result);
 
         if (result.success) {
           if (result.user.role === 'ADMIN') {

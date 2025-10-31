@@ -1,28 +1,30 @@
 package com.news.news_services.controller;
 
+import com.news.news_services.dto.NewsCreateDto;
+import com.news.news_services.dto.NewsResponseDto;
 import com.news.news_services.entity.*;
 import com.news.news_services.repository.NewsRepository;
+import com.news.news_services.service.CloudinaryService;
 import com.news.news_services.service.NewsService;
 import com.news.news_services.service.TagService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Duration;
-import java.util.HashMap;
+import org.springframework.web.multipart.MultipartFile;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 @RestController
 @RequestMapping("/api/news")
-@CrossOrigin(origins = "http://localhost:3000")
 public class NewsController {
 
     @Autowired
@@ -33,6 +35,9 @@ public class NewsController {
 
     @Autowired
     private TagService tagService;
+
+    @Autowired
+    private CloudinaryService cloudinaryService;
 
     //test kết nối database
     @GetMapping("/test")
@@ -106,17 +111,6 @@ public class NewsController {
     }
 
 
-    //import dữ liệu mẫu
-    @PostMapping("/import-data")
-    public Map<String, Object> importSampleData() {
-        return newsService.importSampleData();
-    }
-
-    //xóa tất cả dữ liệu
-    @PostMapping("/clear-all-data")
-    public Map<String, Object> clearAllData() {
-        return newsService.clearAllData();
-    }
 
     //lấy tin tức của user hiện tại
     @GetMapping("/my-news")
@@ -142,10 +136,19 @@ public class NewsController {
     }
 
     //tạo tin tức mới (cho user)
-    @PostMapping("/my-news")
-    public ResponseEntity<?> createMyNews(@RequestBody Map<String, Object> newsData) {
+    @PostMapping(value = "/my-news",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> createMyNews(@RequestPart("image") MultipartFile imageFile,
+                                          @RequestPart("news") String newJson) {
         try {
-            return ResponseEntity.ok(newsService.createMyNews(newsData));
+            String imageUrl = cloudinaryService.uploadFile(imageFile);
+
+            ObjectMapper mapper = new ObjectMapper();
+            NewsCreateDto newsDto = mapper.readValue(newJson,NewsCreateDto.class);
+
+            News savedNewsEntity = newsService.createMyNews(newsDto, imageUrl);
+
+            NewsResponseDto responseDTO = new NewsResponseDto(savedNewsEntity);// Pass DTO and URL
+            return ResponseEntity.ok(responseDTO);
         } catch (Exception e) {
             System.err.println("Error creating my news: " + e.getMessage());
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
@@ -153,13 +156,28 @@ public class NewsController {
     }
 
     //cập nhật tin tức của user
-    @PutMapping("/my-news/{id}")
-    public ResponseEntity<?> updateMyNews(@PathVariable Long id, @RequestBody Map<String, Object> newsData) {
+    @PutMapping(value = "/my-news/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> updateNews(@PathVariable Long id,
+                                        @RequestPart(value = "image", required = false) MultipartFile imageFile,
+                                        @RequestPart("news") String newJson) {
         try {
-            return ResponseEntity.ok(newsService.updateMyNews(id, newsData));
+            String imageUrl = null;
+            if (imageFile != null && !imageFile.isEmpty()) {
+                imageUrl = cloudinaryService.uploadFile(imageFile);
+            }
+
+            ObjectMapper mapper = new ObjectMapper();
+            NewsCreateDto newsDto = mapper.readValue(newJson,NewsCreateDto.class);
+
+            News existingNews = newsService.updateMyNews(id, newsDto, imageUrl);
+
+            NewsResponseDto responseDTO = new NewsResponseDto(existingNews);// Pass DTO and URL
+            return ResponseEntity.ok(responseDTO);
+
+
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                .body(Map.of("error", "Lỗi khi cập nhật tin tức: " + e.getMessage()));
+                    .body(Map.of("error", "Lỗi khi cập nhật tin tức: " + e.getMessage()));
         }
     }
 

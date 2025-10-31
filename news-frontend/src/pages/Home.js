@@ -12,6 +12,7 @@ const Home = () => {
     fetchNews(0);
   }, []);
 
+  
   const fetchNews = async (page = 0) => {
     try {
       setLoading(true);

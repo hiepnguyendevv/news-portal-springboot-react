@@ -1,5 +1,6 @@
 package com.news.news_services.controller;
 
+import com.news.news_services.dto.NotificationDto;
 import com.news.news_services.entity.Notification;
 import com.news.news_services.security.UserPrincipal;
 import com.news.news_services.service.NotificationService;
@@ -11,10 +12,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/notifications")
-@CrossOrigin(origins = "http://localhost:3000")
 public class NotificationController {
 
     @Autowired
@@ -24,8 +25,14 @@ public class NotificationController {
     public ResponseEntity<?> getMyNotifications() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UserPrincipal user = (UserPrincipal) authentication.getPrincipal();
-        List<Notification> list = notificationService.getUserNotifications(user.getId());
-        return ResponseEntity.ok(list);
+        List<Notification> notifications = notificationService.getUserNotifications(user.getId());
+        
+        // Convert to DTO to avoid circular references
+        List<NotificationDto> notificationDtos = notifications.stream()
+                .map(NotificationDto::from)
+                .collect(Collectors.toList());
+                
+        return ResponseEntity.ok(notificationDtos);
     }
 
     @GetMapping("/unread-count")

@@ -11,11 +11,14 @@ const CreateNews = () => {
     isRealtime: true,
     content: 'Nội dung tường thuật',
     categoryId: '',
-    imageUrl: '',
     published: true,
     featured: true,
     tags: []
   });
+  
+  // State mới cho file ảnh
+  const [imageFile, setImageFile] = useState(null); 
+  const [imagePreviewUrl, setImagePreviewUrl] = useState(''); // State để xem trước ảnh
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -54,6 +57,20 @@ const CreateNews = () => {
     }));
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type || !file.type.startsWith('image/')) {
+      toast.warning('Vui lòng chọn file ảnh hợp lệ (PNG, JPG, JPEG).');
+      e.target.value = '';
+      setImageFile(null);
+      setImagePreviewUrl('');
+      return;
+    }
+    setImageFile(file);
+    setImagePreviewUrl(URL.createObjectURL(file));
+  };
+
   const handleToggleTag = (tagName) => {
 
     setFormData(prev => {
@@ -68,8 +85,8 @@ const CreateNews = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.title  || !formData.categoryId || !formData.tags.length) {
-      setError('Vui lòng điền đầy đủ thông tin bắt buộc');
+    if (!formData.title || !formData.categoryId || !formData.tags.length || !imageFile) {
+      toast.warning('Vui lòng điền đầy đủ thông tin bắt buộc và chọn ảnh bìa');
       return;
     }
 
@@ -77,27 +94,35 @@ const CreateNews = () => {
     setError('');
     
     try {
-      // Gọi API tạo tin tức mới (cần implement ở backend)
-      const newsData = {
-        ...formData,
-        authorId: user.id
-      };
+      const formDataToSend = new FormData();
+
+      formDataToSend.append('image', imageFile);
       
-      // avoid logging large objects during render/submit in production
-      const response = await newsAPI.createNews(newsData);
+      const newsData = {
+        ...formData
+      };
+
+      formDataToSend.append('news', JSON.stringify(newsData));
+      
+      console.log("formData", formDataToSend);
+      const response = await newsAPI.createNews(formDataToSend);
+      console.log("response", response);
       toast.success('Tạo tin tức thành công');
       
-      // Reset form giống CreateMyNews.js
+      // Reset form
       setFormData({
         title: '',
         summary: '',
-        content: '',
+        isRealtime: true,
+        content: 'Nội dung tường thuật',
         categoryId: '',
-        imageUrl: '',
-        published: false,
-        featured: false,
+        published: true,
+        featured: true,
         tags: []
       });
+      setImageFile(null);
+      setImagePreviewUrl('');
+      document.getElementById('imageFile').value = ''; // Reset input file
 
       // Điều hướng
       navigate(`/admin/live-news/${response.data.id}`);
@@ -196,26 +221,25 @@ const CreateNews = () => {
                       </select>
                     </div>
 
+                    {/* Image File */}
                     <div className="mb-3">
-                      <label htmlFor="imageUrl" className="form-label">Ảnh đại diện (URL)</label>
+                      <label htmlFor="imageFile" className="form-label">
+                        Ảnh bìa <span className="text-danger">*</span>
+                      </label>
                       <input
-                        type="url"
+                        type="file"
                         className="form-control"
-                        id="imageUrl"
-                        name="imageUrl"
-                        value={formData.imageUrl}
-                        onChange={handleChange}
-                        placeholder="https://example.com/image.jpg"
+                        id="imageFile"
+                        accept="image/*" 
+                        name="imageFile"
+                        onChange={handleFileChange}
                       />
-                      {formData.imageUrl && (
+                      {imagePreviewUrl && (
                         <img 
-                          src={formData.imageUrl} 
+                          src={imagePreviewUrl} 
                           alt="Preview" 
                           className="img-thumbnail mt-2"
                           style={{ maxWidth: '200px', maxHeight: '150px' }}
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                          }}
                         />
                       )}
                     </div>

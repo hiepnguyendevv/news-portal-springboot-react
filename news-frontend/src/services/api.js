@@ -3,13 +3,12 @@ const API_URL = "/api";
 
 const api = axios.create({
    baseURL: API_URL,
-   headers: {
-       "Content-Type": "application/json",
-   },
-   withCredentials: true, // Quan trọng: gửi cookie
+  //  headers: {
+  //      "Content-Type": "application/json",
+  //  },
+   withCredentials: true, 
 });
 
-// Request interceptor để thêm JWT token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -23,7 +22,6 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor để handle token expired
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -42,9 +40,6 @@ export const newsAPI = {
    getPublishedNewsPaged: async (page = 0, size = 12) => {
      return api.get(`/news/published/paged?page=${page}&size=${size}`);
    },
-   importSampleData: async () => api.post("/news/import-data"),
-   addSampleNews: async () => api.post("/news/add-sample"),
-   clearAllData: async () => api.post("/news/clear-all-data"),
    getNewsByCategory: async (category) => api.get(`/news/category/${category}`),
    getNewsByCategorySlug: async (slug) => api.get(`/news/category/slug/${slug}`),
    searchNews: async (keyword) => api.get(`/news/search?keyword=${encodeURIComponent(keyword)}`),
@@ -111,8 +106,9 @@ export const newsAPI = {
   // Profile APIs (current user)
   updateMyProfile: async (payload) => api.put('/auth/me', payload),
 
-  //google login APIs
+  // OAuth2 Google Login API
   googleLogin: async () => api.get('/oauth2/callback'),
+
 
   incrementViewCount: async (id) => api.post(`/news/${id}/view`),
   getNewsByViewCountDesc: async (page = 0, size = 20) => api.get(`/news/view-desc?page=${page}&size=${size}`),
@@ -162,6 +158,28 @@ export const newsAPI = {
   //
   //Live News APIs
   deleteLiveEntry: async (entryId) => api.delete(`/live-content/${entryId}`),
+
+  //Media APIs
+  uploadMedia: async (file) => {
+    if (!file) return null;
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const response = await api.post('/media/upload', formData); 
+        
+        if (!response.data?.url) { 
+            throw new Error('Upload API did not return a "url" property'); 
+        }
+        
+        return response.data.url; 
+
+    } catch (err) {
+        console.error("Upload API Error:", err.response?.data || err.message);
+        throw err; 
+    }
+},
 }; 
+
 
 export default api;

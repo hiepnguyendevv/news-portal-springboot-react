@@ -8,6 +8,7 @@ import AdminNewsFilters from '../../components/admin/AdminNewsFilters';
 import AdminNewsTable from '../../components/admin/AdminNewsTable';
 import AdminRejectModal from '../../components/admin/AdminRejectModal';
 import { toast } from 'react-toastify';
+
 const NewsManagement = () => {
   const [news, setNews] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -46,10 +47,15 @@ const NewsManagement = () => {
   }, []);
 
   useEffect(() => {
-    fetchNews(0);
+    // fetch once on mount
     fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    // whenever filters change, reset to first page and fetch
     setPage(0);
-  }, [filter, categoryFilter,sortBy, searchTerm]);
+    fetchNews(0);
+  }, [filter, categoryFilter, sortBy, searchTerm]);
 
   // Cập nhật URL khi filter/sort/page/search thay đổi mà không navigate
   useEffect(() => {
@@ -76,44 +82,12 @@ const NewsManagement = () => {
         q: searchTerm,
         sortBy
       });
+      
       const pageData = response.data;
-
-      let items = pageData.content || [];
-
-      // Client-side filters (tạm thời nếu server chưa hỗ trợ)
-      if (filter === 'published') {
-        items = items.filter(item => (item.status === 'PUBLISHED') || (item.status == null && item.published === true));
-      } else if (filter === 'draft') {
-        items = items.filter(item => (item.status === 'DRAFT') || (item.status == null && item.published === false));
-      } else if (filter === 'pending') {
-        items = items.filter(item => item.status === 'PENDING_REVIEW');
-      } else if (filter === 'featured') {
-        items = items.filter(item => item.featured === true);
-      }
-
-      if (categoryFilter) {
-        items = items.filter(item => item.category?.id?.toString() === categoryFilter);
-      }
-
-      if (searchTerm) {
-        const q = searchTerm.toLowerCase();
-        items = items.filter(item =>
-          (item.title || '').toLowerCase().includes(q) ||
-          (item.content || '').toLowerCase().includes(q)
-        );
-      }
-
-      if (sortBy === 'desc') {
-        items = [...items].sort((a,b) => (b.viewCount || 0) - (a.viewCount || 0));
-      } else if (sortBy === 'asc') {
-        items = [...items].sort((a,b) => (a.viewCount || 0) - (b.viewCount || 0));
-      }
-
-      setNews(items);
+      setNews(pageData.content || []);
       setTotalPages(pageData.totalPages || 0);
-      setPage(pageData.number || targetPage);
+      setPage(pageData.number ?? targetPage);
     } catch (err) {
-      // setError('Không thể tải danh sách tin tức');
       toast.error('Không thể tải danh sách tin tức');
       console.error('Error fetching news:', err);
     } finally {
@@ -122,7 +96,7 @@ const NewsManagement = () => {
   };
 
   const handlePageChange = (newPage) => {
-    setPage(newPage);
+    // Page state will be synchronized from server response inside fetchNews
     fetchNews(newPage);
   };
 
@@ -145,10 +119,8 @@ const NewsManagement = () => {
     try {
       await newsAPI.deleteNews(selectedNewsId);
       setNews(news.filter(item => item.id !== selectedNewsId));
-      // setSuccess('Xóa tin tức thành công!');
       toast.success('Xóa tin tức thành công');
     } catch (err) {
-      // setError('Lỗi khi xóa tin tức: ' + err.message);
       toast.error('Lỗi khi xóa tin tức');
     } finally {
       setShowDeleteModal(false);
@@ -158,32 +130,24 @@ const NewsManagement = () => {
 
   const handleTogglePublish = async (newsId, currentStatus) => {
     try {
-
-
       await newsAPI.updateNewsStatus(newsId, { published: !currentStatus });
       setNews(news.map(item => 
         item.id === newsId ? { ...item, published: !currentStatus } : item
       ));
-      // setSuccess(`${!currentStatus ? 'Xuất bản' : 'Hủy xuất bản'} thành công!`);
       toast.success(`${!currentStatus ? 'Xuất bản' : 'Hủy xuất bản'} thành công`);
     } catch (err) {
-      // setError('Lỗi khi cập nhật trạng thái: ' + err.message);
       toast.error('Lỗi khi cập nhật trạng thái');
     }
   };
-
+  
   const handleToggleFeatured = async (newsId, currentStatus) => {
     try {
-
- 
       await newsAPI.updateNewsStatus(newsId, { featured: !currentStatus });
       setNews(news.map(item => 
         item.id === newsId ? { ...item, featured: !currentStatus } : item
       ));
-      // setSuccess(`${!currentStatus ? 'Đặt' : 'Bỏ'} tin nổi bật thành công!`);
       toast.success(`${!currentStatus ? 'Đặt' : 'Bỏ'} tin nổi bật thành công`);
     } catch (err) {
-      // setError('Lỗi khi cập nhật trạng thái: ' + err.message);
       toast.error('Lỗi khi cập nhật trạng thái');
     }
   };
@@ -223,11 +187,9 @@ const NewsManagement = () => {
       setNews(news.map(item => 
         item.id === selectedNewsId ? { ...item, published: false, status: 'DRAFT', reviewNote: rejectNote || '' } : item
       ));
-      // setSuccess('Đã từ chối bài viết và chuyển về bản nháp');
       toast.success('Đã từ chối bài viết và chuyển về bản nháp');
       handleCloseReject();
     } catch (err) {
-      // setError('Lỗi khi từ chối bài viết: ' + err.message);
       toast.error('Lỗi khi từ chối bài viết');
     }
   };
@@ -267,15 +229,11 @@ const NewsManagement = () => {
 
   const handleConfirmBulkDelete = async () => {
     try {
-      console.log('Deleting news IDs:', selectedItems);
       const response = await newsAPI.bulkDeleteNews(selectedItems);
-      console.log('Delete response:', response);
       setNews(news.filter(item => !selectedItems.includes(item.id)));
       toast.success(response.data.message);
       setSelectedItems([]);
     } catch (err) {
-      console.error('Error deleting news:', err);
-      console.error('Error response:', err.response);
       toast.error('Lỗi khi xóa tin tức: ' + (err.response?.data?.error || err.message));
     } finally {
       setShowBulkDeleteModal(false);
@@ -393,7 +351,11 @@ const NewsManagement = () => {
               ) : (
                 <AdminNewsTable
                   items={news}
-                  onEdit={(id) => navigate(`/admin/news/edit/${id}`)}
+                 
+                  onEdit={(item) => {
+                    const isRealtime = Boolean(item?.isRealtime || item?.realtime);
+                    navigate(isRealtime ? `/admin/live-news/${item.id}` : `/admin/news/edit/${item.id}`);
+                  }}
                   onTogglePublish={handleTogglePublish}
                   onToggleFeatured={handleToggleFeatured}
                   onDelete={openDeleteNews}

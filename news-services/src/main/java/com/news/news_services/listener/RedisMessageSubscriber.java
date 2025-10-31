@@ -23,7 +23,6 @@ public class RedisMessageSubscriber implements MessageListener {
     public void onMessage(Message message, byte[] pattern) {
         try{
             LiveNewsEvent event = objectMapper.readValue(message.getBody(), LiveNewsEvent.class);
-            System.out.println("message" + event);
             String destination = "/topic/live/" + event.getNewsId();
             simpMessagingTemplate.convertAndSend(destination, event);
         }catch (Exception e){

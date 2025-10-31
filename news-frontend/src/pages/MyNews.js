@@ -89,6 +89,7 @@ const MyNews = () => {
     } catch (err) {
       // setError('Lỗi khi xóa bài viết: ' + err.message);
       toast.error('Lỗi khi xóa bài viết');
+      console.error('Error deleting news:', err);
     } finally {
       setShowDeleteModal(false);
       setSelectedNewsId(null);

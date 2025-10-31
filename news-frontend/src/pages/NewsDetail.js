@@ -34,7 +34,7 @@ const NewsDetail = () => {
       }
       
       setNews(response.data);
-      console.log(response.data);
+      console.log(response.data.title);
       setError(null);
 
       if (!incrementedRef.current) {
@@ -150,16 +150,11 @@ const NewsDetail = () => {
           )}
 
           <div className="news-content">
-            <div className="fs-5 lh-lg">
-              {news.content.split('\n').map((paragraph, index) => (
-                <p key={index} className="mb-3" style={{
-                  wordBreak: 'break-word',
-                  overflowWrap: 'break-word',
-                  hyphens: 'auto',
-                  maxWidth: '100%'
-                }}>{paragraph}</p>
-              ))}
-            </div>
+            <div
+              className="fs-5 lh-lg"
+              style={{ wordBreak: 'break-word', overflowWrap: 'break-word', hyphens: 'auto', maxWidth: '100%' }}
+              dangerouslySetInnerHTML={{ __html: news.content || '' }}
+            />
           </div>
 
           <hr className="my-5" />

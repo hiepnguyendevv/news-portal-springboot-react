@@ -52,7 +52,7 @@ public class LiveContent {
 
 
     public enum ContentType{
-        TEXT, IMAGE, VIDEO_EMBED, TWEET_EMBED
+        TEXT, IMAGE, VIDEO_EMBED
     }
 
     public enum EntryStatus {
