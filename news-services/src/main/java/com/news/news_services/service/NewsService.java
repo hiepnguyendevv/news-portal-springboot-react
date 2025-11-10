@@ -66,6 +66,11 @@ public class NewsService {
 
     @Autowired
     private MediaRepository mediaRepository;
+
+    @Autowired
+    private TagGenerationService tagGenerationService;
+
+
     public List<News> getAllNews() {
         return newsRepository.findAll();
     }
@@ -280,7 +285,11 @@ public class NewsService {
         // 6. Lưu Entity vào DB (để lấy ID)
         News savedNews = newsRepository.save(newsEntity);
 
-        List<String> tagNames = newsDto.getTags();
+        // BÂY GIỜ CHÚNG TA TỰ ĐỘNG TẠO TAGS
+        List<String> tagNames = tagGenerationService.generateTagsFromContent(
+                newsDto.getTitle(),
+                newsDto.getContent() // Lấy nội dung gốc trước khi Jsoup clean
+        );
         if (tagNames != null && !tagNames.isEmpty()) {
             tagService.assignToNews(savedNews.getId(), tagNames);
         }
