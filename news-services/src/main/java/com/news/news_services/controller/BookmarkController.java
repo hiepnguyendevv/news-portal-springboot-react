@@ -13,6 +13,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
@@ -24,6 +26,9 @@ import java.util.Map;
     @Autowired private NewsRepository newsRepository;
 
     private User currentUser(Authentication auth){
+        if (auth == null || auth.getPrincipal() == null || !(auth.getPrincipal() instanceof UserPrincipal)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
         UserPrincipal up = (UserPrincipal) auth.getPrincipal();
         return userRepository.findById(up.getId()).orElseThrow();
     }
@@ -64,6 +69,9 @@ import java.util.Map;
 
     @GetMapping("/news/{id}/bookmark/status")
     public ResponseEntity<?> isBookmarked(@PathVariable Long id, Authentication auth) {
+        if (auth == null) {
+            return ResponseEntity.ok(Map.of("bookmarked", false));
+        }
         User user = currentUser(auth);
         News news = newsRepository.findById(id).orElseThrow();
         boolean bookmarked = bookmarkRepository.existsByUserAndNews(user, news);

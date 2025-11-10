@@ -23,6 +23,8 @@ const CreateNews = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [tags, setTags] = useState([]); 
+  const [contentMediaIds, setContentMediaIds] = useState([]);
+
 
   const navigate = useNavigate();
 
@@ -56,8 +58,44 @@ const CreateNews = () => {
     }));
   };
 
+const handleFileUpload = async (blobInfo, progress) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const file = blobInfo.blob(); // Lấy file từ TinyMCE
+        
+        // Gọi API upload
+        const result = await newsAPI.uploadNewsMedia(file);
+        
+        // Kiểm tra kết quả
+        if (!result) {
+          reject('Upload failed: No response from server');
+          return;
+        }
+        
+        // Lấy URL (ưu tiên location, fallback về url)
+        const mediaUrl = result.location || result.url;
+        if (!mediaUrl) {
+          reject('Upload failed: No URL returned from server');
+          return;
+        }
+        
+        // Cache mediaId để sau này gửi lên server
+        if (result.mediaId) {
+          setContentMediaIds(prev => [...prev, result.mediaId]);
+        }
+        
+        // Trả về location cho TinyMCE (TinyMCE sẽ chèn URL này vào content)
+        resolve(result.location);
+      } catch (error) {
+        console.error('Upload image failed:', error);
+        reject('Upload failed: ' + (error.response?.data?.error || error.message));
+      }
+    });
+  };
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
+  
     if (!file) return;
     if (!file.type || !file.type.startsWith('image/')) {
       toast.warning('Vui lòng chọn file ảnh hợp lệ (PNG, JPG, JPEG).');
@@ -79,18 +117,67 @@ const CreateNews = () => {
       }
     });
   };
+  // Thêm hàm này vào component CreateNews của bạn
+const filePickerCallback = (callback, value, meta) => {
+  const input = document.createElement('input');
+  input.setAttribute('type', 'file');
   
+  // Lọc loại file dựa trên loại dialog
+  if (meta.filetype === 'image') {
+    input.setAttribute('accept', 'image/*');
+  } else if (meta.filetype === 'media') {
+    // Cho phép upload video và audio
+    input.setAttribute('accept', 'video/*, audio/*'); 
+  } else {
+    input.setAttribute('accept', '*/*');
+  }
+
+  // Xử lý khi người dùng chọn file
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+
+    // Hiển thị thông báo đang upload
+    const toastId = toast.loading("Đang tải lên file media...");
+
+    // Tạo một "blobInfo" giả từ file đã chọn
+    // Chúng ta cần editorRef để truy cập blobCache của TinyMCE
+    if (!editorRef.current) {
+      toast.error("Editor chưa sẵn sàng, vui lòng thử lại.");
+      return;
+    }
+    
+    const blobInfo = editorRef.current.editorUpload.blobCache.create(
+      `${new Date().getTime()}-${file.name}`, // Tạo ID duy nhất
+      file,      // File
+      file.type  // Loại blob
+    );
+
+    try {
+      // Gọi hàm upload chung của chúng ta
+      const location = await handleFileUpload(blobInfo);
+      
+      // Trả về URL cho TinyMCE
+      callback(location, { title: file.name });
+      toast.update(toastId, { render: "Tải lên thành công!", type: "success", isLoading: false, autoClose: 3000 });
+
+    } catch (error) {
+      console.error('Upload from picker failed:', error);
+      toast.update(toastId, { render: `Upload thất bại: ${error}`, type: "error", isLoading: false, autoClose: 5000 });
+    }
+  };
+  
+  // Tự động click vào input để mở cửa sổ chọn file
+  input.click();
+};
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // --- LẤY DỮ LIỆU TỪ EDITOR REF ---
     let currentContent = '';
     if (editorRef.current) {
-      currentContent = editorRef.current.getContent(); // Lấy HTML content
+      currentContent = editorRef.current.getContent(); 
     }
-    // --- KẾT THÚC LẤY DỮ LIỆU ---
     
-    // Sửa validation để kiểm tra 'currentContent' thay vì 'formData.content'
     if (!formData.title || !currentContent || !formData.categoryId || !formData.tags.length || !imageFile) {
       toast.warning('Vui lòng điền đầy đủ thông tin bắt buộc và chọn ảnh bìa');
       return;
@@ -104,7 +191,9 @@ const CreateNews = () => {
       
       const newsData = {
         ...formData,
-        content: currentContent // Gán content mới nhất từ ref
+        content: currentContent,
+        mediaIds: contentMediaIds // THÊM DÒNG NÀY
+ 
       };
 
       formDataToSend.append('news', JSON.stringify(newsData));
@@ -114,22 +203,23 @@ const CreateNews = () => {
       console.log("response", response);
       toast.success('Tạo tin tức thành công');
       
-      // Reset form
       setFormData({
         title: '',
         summary: '',
-        content: '', // Reset content trong state
+        content: '',
         categoryId: '',
         published: false,
         featured: false,
         tags: []
       });
-      // Reset editor
+
       if (editorRef.current) {
         editorRef.current.setContent('');
       }
       setImageFile(null);
       setImagePreviewUrl('');
+      setContentMediaIds([]); // RESET MEDIA IDS
+
       document.getElementById('imageFile').value = ''; 
 
       // Điều hướng
@@ -213,7 +303,7 @@ const CreateNews = () => {
                       </label>
                       <Editor
                         id="content-editor"
-                        apiKey='29h0bkhxlcdk5pu2h6wc6b0mtk6rpojdadtsvvv1af739dym' // <-- DÙNG API KEY CỦA BẠN (HOẶC BIẾN MÔI TRƯỜNG)
+                        apiKey='29h0bkhxlcdk5pu2h6wc6b0mtk6rpojdadtsvvv1af739dym'
                         onInit={(evt, editor) => editorRef.current = editor}
                         initialValue="" // Bắt đầu bằng rỗng
                         init={{
@@ -225,21 +315,30 @@ const CreateNews = () => {
                             'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
                             'insertdatetime', 'media', 'table', 'help', 'wordcount'
                           ],
-                          toolbar: 'undo redo | blocks | code ' +
+                          toolbar: 'undo redo | blocks' +
                             'bold italic forecolor | alignleft aligncenter ' +
-                            'alignright alignjustify | bullist numlist outdent indent | ' +
+                            // 'alignright alignjustify | bullist numlist outdent indent | ' +
                             'link image media | removeformat | help',
+                            extended_valid_elements: 'span[style],p[style],h1[style],h2[style],h3[style]',
+                            // 1. Đổi tên handler (để xử lý kéo-thả ảnh)
+                            images_upload_handler: handleFileUpload, 
+                            
+                            // 2. Thêm 2 dòng này để xử lý nút "browse"
+                            file_picker_callback: filePickerCallback,
+                            file_picker_types: 'image media', // Áp dụng cho cả dialog ảnh và media
+
+                            // --- KẾT THÚC SỬA ĐỔI ---
+                            automatic_uploads: true,
                           }}
+                          
                       />
                     </div>
 
-                  </div> {/* === KẾT THÚC CỘT BÊN TRÁI (8) === */}
+                  </div> 
                   
 
-                  {/* === CỘT BÊN PHẢI (4) === */}
                   <div className="col-md-4">
 
-                    {/* Category (ĐÚNG VỊ TRÍ) */}
                     <div className="mb-3">
                       <label htmlFor="categoryId" className="form-label">
                         Danh mục <span className="text-danger">*</span>
@@ -261,7 +360,7 @@ const CreateNews = () => {
                       </select>
                     </div>
 
-                    {/* Image File (ĐÚNG VỊ TRÍ) */}
+                    {/* Image File*/}
                     <div className="mb-3">
                       <label htmlFor="imageFile" className="form-label">
                         Ảnh bìa <span className="text-danger">*</span>
@@ -284,7 +383,7 @@ const CreateNews = () => {
                       )}
                     </div>
 
-                    {/* Options (ĐÚNG VỊ TRÍ) */}
+                    {/* Options */}
                     <div className="mb-3">
                       <div className="form-check">
                         <input
@@ -316,7 +415,7 @@ const CreateNews = () => {
                       </div>
                     </div>
 
-                    {/* Tags (ĐÚNG VỊ TRÍ) */}
+                    {/* Tags  */}
                     <div className="mb-3">
                       <label htmlFor="tags" className="form-label">
                         Tags <span className="text-danger">*</span>
@@ -338,7 +437,7 @@ const CreateNews = () => {
                       </div>
                     </div>
 
-                    {/* Submit Button (ĐÚNG VỊ TRÍ) */}
+                    {/* Submit Button */}
                     <div className="d-grid mt-2">
                       <button
                         type="submit"
@@ -359,9 +458,9 @@ const CreateNews = () => {
                       </button>
                     </div>
 
-                  </div> {/* === KẾT THÚC CỘT BÊN PHẢI (4) === */}
+                  </div> 
 
-                </div> {/* === KẾT THÚC <div className="row"> === */}
+                </div> 
               </form>
             </div>
           </div>

@@ -1,4 +1,3 @@
-// src/components/live-news/EntryList.jsx
 
 import React from 'react';
 import EntryItem from './EntryItem';

@@ -2,15 +2,15 @@
 
 import React from 'react';
 
-const EntryItem = ({ entry, onEdit, onTogglePin, onDelete }) => {
+const EntryItem = ({ entry, onEdit, onDelete }) => {
     const mediaStyle = { width: '100%', height: 'auto', maxHeight: '800px', objectFit: 'contain' };
   
     return (
         <div className="card mb-3 shadow-sm">
-            <div className={`card-body ${entry.entryStatus === 'PINNED' ? 'border-start border-5 border-warning' : ''}`}>
+            <div className={`card-body`}>
                 <div className="d-flex justify-content-between align-items-start mb-2">
                     <div className="d-flex align-items-center gap-2 fw-bold text-muted">
-                        {entry.entryStatus === 'PINNED' && <span className="badge bg-warning text-dark">Pinned</span>}
+                        {/* Pinned badge removed */}
                     </div>
                     <small className="text-muted">
                         {entry.createdAt ? new Date(entry.createdAt).toLocaleString('vi-VN') : 'Đang gửi...'}
@@ -18,8 +18,13 @@ const EntryItem = ({ entry, onEdit, onTogglePin, onDelete }) => {
                 </div>
 
                 <div>
-                    {entry.content && <p className="card-text" style={{ whiteSpace: 'pre-wrap' }}>{entry.content}</p>}
-                    
+                    {entry.content && (
+                        <div
+                            className="card-text mb-2"
+                            // style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}
+                            dangerouslySetInnerHTML={{ __html: entry.content }}
+                        />
+                    )}
                     {entry.mediaUrl && (
                         <div className="mt-2">
                             {(() => {
@@ -46,9 +51,6 @@ const EntryItem = ({ entry, onEdit, onTogglePin, onDelete }) => {
                     <div className="d-flex gap-2 justify-content-end">
                         <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => onEdit(entry)}>
                             ✏️ Sửa
-                        </button>
-                        <button type="button" className="btn btn-sm btn-outline-info" onClick={() => onTogglePin(entry)}>
-                            📌 {entry.entryStatus === 'PINNED' ? 'Bỏ ghim' : 'Ghim'}
                         </button>
                         <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => onDelete(entry)}>
                             🗑️ Xóa

@@ -11,6 +11,8 @@ public class NewsCreateDto {
     private Boolean featured;
     private Boolean isRealtime;
     private List<String> tags;
+    private List<Long> mediaIds; // THÊM TRƯỜNG NÀY
+
 
     public NewsCreateDto() {
     }
@@ -77,5 +79,13 @@ public class NewsCreateDto {
 
     public void setTags(List<String> tags) {
         this.tags = tags;
+    }
+
+    public List<Long> getMediaIds() {
+        return mediaIds;
+    }
+
+    public void setMediaIds(List<Long> mediaIds) {
+        this.mediaIds = mediaIds;
     }
 }

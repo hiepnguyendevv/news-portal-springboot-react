@@ -30,7 +30,6 @@ const NewsManagement = () => {
 
   const navigate = useNavigate();
 
-  // Đọc URL params 1 lần khi mount để đồng bộ state
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const f = params.get('filter');
@@ -96,7 +95,6 @@ const NewsManagement = () => {
   };
 
   const handlePageChange = (newPage) => {
-    // Page state will be synchronized from server response inside fetchNews
     fetchNews(newPage);
   };
 

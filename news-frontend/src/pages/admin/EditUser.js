@@ -71,7 +71,6 @@ const EditUser = () => {
       toast.success('Cập nhật người dùng thành công');
       navigate('/admin/users');
     } catch (err) {
-      // setError('Có lỗi xảy ra: ' + (err.response?.data?.error || err.message));
       toast.error('Có lỗi xảy ra');
     } finally {
       setLoading(false);

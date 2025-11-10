@@ -30,7 +30,6 @@ const UserManagement = () => {
       const response = await newsAPI.getAllUsers();
       let usersData = response.data;
 
-      // Filter users based on selected filter
       let filteredUsers = usersData;
       if (filter !== 'all') {
         if (filter === 'active') {
@@ -50,7 +49,6 @@ const UserManagement = () => {
 
       setUsers(filteredUsers);
     } catch (err) {
-      // setError('Không thể tải danh sách người dùng');
       toast.error('Không thể tải danh sách người dùng');
     } finally {
       setLoading(false);
@@ -77,10 +75,8 @@ const UserManagement = () => {
 
       await newsAPI.deleteUser(selectedUserId);   
       setUsers(users.filter(user => user.id !== selectedUserId));
-      // setSuccess('Xóa người dùng thành công!');
       toast.success('Xóa người dùng thành công');
     } catch (err) {
-      // setError('Lỗi khi xóa người dùng: ' + err.message);
       toast.error('Lỗi khi xóa người dùng');
     } finally {
       setShowDeleteModal(false);
@@ -94,10 +90,8 @@ const UserManagement = () => {
       setUsers(users.map(user => 
         user.id === userId ? { ...user, status: newStatus } : user
       ));
-      // setSuccess('Cập nhật trạng thái thành công!');
       toast.success('Cập nhật trạng thái thành công');
     } catch (err) {
-      // setError('Lỗi khi cập nhật trạng thái: ' + err.message);
       toast.error('Lỗi khi cập nhật trạng thái');
     }
   };
@@ -234,22 +228,6 @@ const UserManagement = () => {
             </div>
           </div>
 
-          {/* Alert Messages */}
-          {error && (
-            <div className="alert alert-danger" role="alert">
-              <i className="fas fa-exclamation-circle me-2"></i>
-              {error}
-              toast.error('Lỗi khi xóa người dùng');
-            </div>
-          )}
-
-          {success && (
-            <div className="alert alert-success" role="alert">
-              <i className="fas fa-check-circle me-2"></i>
-              {success}
-            </div>
-          )}
-
           {/* Filter Tabs */}
           <ul className="nav nav-tabs mb-3">
             <li className="nav-item">
@@ -340,6 +318,7 @@ const UserManagement = () => {
                 </div>
               )}
             </div>
+            
             <div className="card-body">
               {loading ? (
                 <div className="text-center py-4">

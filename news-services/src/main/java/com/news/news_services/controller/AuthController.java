@@ -1,14 +1,19 @@
 package com.news.news_services.controller;
 
+import com.news.news_services.dto.ExchangeTokenResponse;
 import com.news.news_services.dto.JwtResponse;
 import com.news.news_services.dto.LoginRequest;
 import com.news.news_services.dto.SignupRequest;
 import com.news.news_services.entity.User;
 import com.news.news_services.repository.UserRepository;
+import com.news.news_services.security.CookieUtil;
 import com.news.news_services.security.JwtUtil;
 import com.news.news_services.security.UserPrincipal;
+import com.news.news_services.service.RefreshTokenService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -36,6 +41,12 @@ public class  AuthController {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Autowired
+    private RefreshTokenService refreshTokenService;
+
+    @Autowired
+    private CookieUtil cookieUtil;
+
     @PostMapping("/signin")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         try{
@@ -48,13 +59,22 @@ public class  AuthController {
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            String jwt = jwtUtil.generateJwtToken(authentication);
 
             UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
             User user = userRepository.findById(userPrincipal.getId())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            return ResponseEntity.ok(JwtResponse.build(jwt, user));
+            String jwt = jwtUtil.generateJwtToken(authentication);
+            String rawRefreshToken = refreshTokenService.createRefreshToken(user);
+            System.out.println("Token khi login: "+ rawRefreshToken);
+
+
+            ResponseCookie refreshCookie = cookieUtil.createRefreshCookie(rawRefreshToken);
+
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+            .body(JwtResponse.build(jwt,user));
 
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
@@ -62,6 +82,32 @@ public class  AuthController {
             return ResponseEntity.badRequest().body(error);
         }
 
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refreshToken(@CookieValue(name = "${app.refreshCookieName}") String oldRawToken){
+        try{
+            ExchangeTokenResponse response = refreshTokenService.exchangRefreshToken(oldRawToken);
+            String newRawRefreshToken = response.getNewRawRefreshToken();
+
+            User user = response.getUser();
+
+            System.out.println("Token sau khi refresh: "+ newRawRefreshToken);
+            String newAccessToken = jwtUtil.generateTokenFromUsername(user.getUsername());
+            ResponseCookie newRefreshCookie = cookieUtil.createRefreshCookie(newRawRefreshToken);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, newRefreshCookie.toString())
+                    .body(Map.of("accessToken", newAccessToken)); // Chỉ trả về AT mới
+
+        }catch (Exception e){
+            System.out.println("=== LỖI KHI REFRESH TOKEN ===");
+            System.out.println("Lỗi: " + e.getMessage());
+            e.printStackTrace();
+            ResponseCookie clearCookie = cookieUtil.clearRefreshCookie();
+            return ResponseEntity.status(401)
+                    .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+                    .body(Map.of("error", "Refresh Token không hợp lệ: " + e.getMessage()));
+        }
     }
 
     @PostMapping("/signup")
@@ -198,12 +244,16 @@ public class  AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<?> logoutUser() {
+    public ResponseEntity<?> logoutUser(@CookieValue(name = "${app.refreshCookieName}",required = false)String refreshToken) {
+        refreshTokenService.revokedRefreshToken(refreshToken);
         SecurityContextHolder.clearContext();
 
+        ResponseCookie clearCookie = cookieUtil.clearRefreshCookie();
         Map<String, String> response = new HashMap<>();
         response.put("message", "Đăng xuất thành công!");
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+                .body(response);
     }
 
     

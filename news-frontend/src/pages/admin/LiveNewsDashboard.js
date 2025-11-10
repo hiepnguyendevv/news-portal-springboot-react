@@ -2,7 +2,6 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
-import { newsAPI } from '../../services/api';
 import EntryForm from '../../components/live-news/EntryForm';
 import EntryList from '../../components/live-news/EntryList';
 import EditEntryModal from '../../components/live-news/EditEntryModal';
@@ -26,7 +25,7 @@ const LiveNewsDashboard = () => {
             });
 
             client.onConnect = () => {
-                console.log('✅ Đã kết nối WebSocket');
+                console.log('Đã kết nối WebSocket');
                 setIsConnected(true);
                 client.subscribe(`/topic/live/${newsId}`, (frame) => {
                     const eventData = JSON.parse(frame.body);
@@ -117,15 +116,7 @@ const LiveNewsDashboard = () => {
   
 
     const onEdit = (entry) => {
-        // === DEBUG 1: KIỂM TRA NGUỒN ===
-        console.log('--- DEBUG 1: Mở Modal ---');
-        console.log('Dữ liệu gốc (entry) được truyền vào:', entry);
-        if (entry.content) {
-            console.log('Nội dung gốc CÓ tồn tại:', entry.content.substring(0, 50) + '...'); // In 50 ký tự đầu
-        } else {
-            console.error('LỖI: Nội dung gốc (entry.content) là RỖNG hoặc NULL');
-        }
-        // === KẾT THÚC DEBUG 1 ===
+
         setEditingEntry(entry);
         setShowEditModal(true);
     };
@@ -142,11 +133,7 @@ const LiveNewsDashboard = () => {
                 sortOrder: updatedEntry.sortOrder,
             };
 
-            // === DEBUG: KIỂM TRA PAYLOAD CUỐI CÙNG ===
-            console.log('--- LiveNewsDashboard: onSaveEdit ---');
-            console.log('Payload sắp gửi qua WS:', JSON.stringify(payload, null, 2));
-            // === KẾT THÚC DEBUG ===
-
+      
             clientRef.current.publish({
                 destination: `/app/live/${newsId}/updateEntry`,
                 body: JSON.stringify(payload),
@@ -188,7 +175,6 @@ const LiveNewsDashboard = () => {
           <EntryForm
               onSubmit={sendEntry}
               isConnected={isConnected}
-              newsId={newsId}
           />
           
           <EntryList

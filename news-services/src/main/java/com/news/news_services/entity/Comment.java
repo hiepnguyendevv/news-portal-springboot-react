@@ -56,15 +56,6 @@ public class Comment {
     @Column(name = "created_at",nullable = false)
     private java.time.Instant createdAt;
 
-    @PrePersist
-    public void onCreated(){
-        if(createdAt == null){
-            createdAt = java.time.Instant.now();
-        }
-        if(likeCount == null){
-            likeCount = 0;
-        }
-    }
 
     public boolean isDelete() {
         return delete;

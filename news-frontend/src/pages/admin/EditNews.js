@@ -7,8 +7,13 @@ import { Editor } from '@tinymce/tinymce-react';
 
 const EditNews = () => {
   const [formData, setFormData] = useState({
-    title: '', summary: '', content: '', categoryId: '', published: false, featured: false, tags: [] });
-  const [initialContent, setInitialContent] = useState('');
+    title: '', 
+    summary: '', 
+    content: '', 
+    categoryId: '', 
+    published: false, 
+    featured: false, 
+    tags: [] });
 
   const [categories, setCategories] = useState([]);
   const [tags, setTags] = useState([]);
@@ -37,12 +42,12 @@ const EditNews = () => {
         news.tags.map(tag => typeof tag === 'object' ? tag.name : tag) : [];
       
       setFormData({
-        title: news.title || '',
-        summary: news.summary || '',
-        content: news.content || '', 
-        categoryId: news.category?.id || '',
-        published: news.published || false,
-        featured: news.featured || false,
+        title: news.title,
+        summary: news.summary,
+        content: news.content, 
+        categoryId: news.category?.id,
+        published: news.published,
+        featured: news.featured,
         tags: processedTags
       });
       setImagePreviewUrl(news.imageUrl || '');

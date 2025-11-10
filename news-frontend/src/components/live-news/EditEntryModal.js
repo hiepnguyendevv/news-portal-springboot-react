@@ -13,7 +13,6 @@ const EditEntryModal = ({ entry, isOpen, onClose, onSave, isConnected }) => {
     
 
     useEffect(() => {
-       
         if (entry) {
             setMediaUrl(entry.mediaUrl || '');
             setMediaFile(null); 
@@ -118,7 +117,7 @@ const EditEntryModal = ({ entry, isOpen, onClose, onSave, isConnected }) => {
                                 <input
                                     id="mediaFile-modal"
                                     type="file"
-                                    accept="image/*,video/*" // Chấp nhận cả video
+                                    accept="image/*,video/*" 
                                     className="form-control form-control-sm"
                                     onChange={handleMediaFileChange}
                                     style={{ maxWidth: 260 }}

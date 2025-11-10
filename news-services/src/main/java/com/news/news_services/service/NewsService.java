@@ -4,10 +4,7 @@ import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import com.news.news_services.dto.NewsCreateDto;
 import com.news.news_services.entity.*;
-import com.news.news_services.repository.LiveContentRepository;
-import com.news.news_services.repository.NewsRepository;
-import com.news.news_services.repository.CategoryRepository;
-import com.news.news_services.repository.UserRepository;
+import com.news.news_services.repository.*;
 
 import com.news.news_services.security.UserPrincipal;
 import org.jsoup.Jsoup;
@@ -67,6 +64,8 @@ public class NewsService {
     @Autowired
     private Cloudinary cloudinary;
 
+    @Autowired
+    private MediaRepository mediaRepository;
     public List<News> getAllNews() {
         return newsRepository.findAll();
     }
@@ -242,7 +241,7 @@ public class NewsService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
         String rawHtmlContent = newsDto.getContent();
         String content = Jsoup.clean(rawHtmlContent,Safelist.basicWithImages());
-
+        System.out.println("newsdto content:" + newsDto.getContent());
 
         // 2. Tạo đối tượng News Entity mới
         News newsEntity = new News();
@@ -250,7 +249,7 @@ public class NewsService {
         // 3. Map dữ liệu từ DTO sang Entity
         newsEntity.setTitle(newsDto.getTitle());
         newsEntity.setSummary(newsDto.getSummary());
-        newsEntity.setContent(content);
+        newsEntity.setContent(newsDto.getContent());
         newsEntity.setImageUrl(imageUrl); // Set imageUrl from parameter
         newsEntity.setRealtime(newsDto.isRealTime());
 
@@ -286,7 +285,26 @@ public class NewsService {
             tagService.assignToNews(savedNews.getId(), tagNames);
         }
 
-
+        // 7. Liên kết media với news (nếu có)
+        List<Long> mediaIds = newsDto.getMediaIds();
+        if (mediaIds != null && !mediaIds.isEmpty()) {
+            // Tìm các media "mồ côi" của user hiện tại
+            List<Media> orphanMedia = mediaRepository.findByIdsAndUploaderAndNewsIsNull(
+                    mediaIds, 
+                    userPrincipal.getId()
+            );
+            
+            // Liên kết từng media với news
+            for (Media media : orphanMedia) {
+                media.setNews(savedNews);
+            }
+            
+            // Lưu tất cả media đã được liên kết
+            if (!orphanMedia.isEmpty()) {
+                mediaRepository.saveAll(orphanMedia);
+                logger.info("Linked {} media items to news ID {}", orphanMedia.size(), savedNews.getId());
+            }
+        }
 
         return savedNews; // Return the saved Entity
     }
@@ -299,7 +317,12 @@ public class NewsService {
             News news = newsRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("News not found with id: " + id));
 
-            if (!news.getAuthor().getId().equals(userPrincipal.getId())) {
+            boolean isAdmin = authentication != null &&
+                    authentication.getAuthorities().stream()
+                            .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+
+
+            if (!news.getAuthor().getId().equals(userPrincipal.getId()) && !isAdmin ) {
                 throw new RuntimeException("Bạn không có quyền chỉnh sửa tin tức này");
             }
             String rawHtmlContent = newsDto.getContent();
@@ -387,7 +410,6 @@ public class NewsService {
 
 
         } catch (IOException e) {
-            // Ghi lại lỗi nhưng không dừng việc xóa bài viết trong DB
             logger.error("Lỗi khi xóa ảnh trên Cloudinary cho news ID {}: {}", id, e.getMessage());
 
         }
@@ -398,17 +420,15 @@ public class NewsService {
 
 
     private String extractPublicIdFromUrl(String imageUrl) {
-        // Regex tìm phần sau /upload/v<số>/ cho đến trước dấu chấm cuối cùng (đuôi file)
         Pattern pattern = Pattern.compile("/upload/(?:v\\d+/)?([^.]+?)(\\.\\w+)?$");
         Matcher matcher = pattern.matcher(imageUrl);
         if (matcher.find()) {
-            return matcher.group(1); // Trả về group 1 (phần public_id bao gồm cả folder nếu có)
+            return matcher.group(1);
         }
-        return null; // Không tìm thấy
+        return null;
     }
 
 
-    // Test kết nối database
     public String testConnection() {
         try {
             long count = newsRepository.count();

@@ -1,5 +1,6 @@
 package com.news.news_services.config;
 
+import com.news.news_services.security.AuthEntryPointJwt;
 import com.news.news_services.security.JwtAuthenticationFilter;
 import com.news.news_services.security.UserDetailServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +45,10 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    @Autowired
+    private AuthEntryPointJwt authEntryPointJwt;
+
+
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
@@ -86,26 +91,31 @@ public class SecurityConfig {
         
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+//                .exceptionHandling(exception ->
+//                        exception.authenticationEntryPoint(authEntryPointJwt)
+//                )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth ->
                         auth
                                 .requestMatchers("/").permitAll()
-                                
                                 .requestMatchers("/login").permitAll()
                                 .requestMatchers("/oauth2/**").permitAll()
                                 .requestMatchers("/api/oauth2/**").permitAll()
-                                .requestMatchers("/api/auth/**").permitAll()
+                                .requestMatchers("/api/auth/signin").permitAll()
+                                .requestMatchers("/api/auth/signup").permitAll()
+                                .requestMatchers("/api/auth/refresh").permitAll() // Phải đặt TRƯỚC /api/auth/**
                                 .requestMatchers("/api/tags/**").permitAll()
                                 .requestMatchers("/api/news/test").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/api/news/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/api/live-content/**").permitAll()
                                 .requestMatchers("/api/category/**").permitAll()
-                                .requestMatchers(HttpMethod.POST, "/api/news/import-data").permitAll()
-                                .requestMatchers(HttpMethod.POST, "/api/news/clear-all-data").permitAll()
                                 .requestMatchers(HttpMethod.POST, "/api/news/create").hasRole("USER")
+                                .requestMatchers(HttpMethod.POST, "/api/media/upload").authenticated() // Upload media cho TinyMCE
+                                .requestMatchers(HttpMethod.POST, "/api/media/upload-news").authenticated()
                                 .requestMatchers("/api/news/my-news/**").authenticated()
                                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                                 .requestMatchers("/ws/**").permitAll()
+//                                .requestMatchers("/api/auth/**").authenticated() // Các endpoint /api/auth khác cần auth
                                 .anyRequest().authenticated()
                         )
                 .oauth2Login(oauth2 -> {

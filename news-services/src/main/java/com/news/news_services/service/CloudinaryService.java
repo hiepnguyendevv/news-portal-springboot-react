@@ -40,15 +40,12 @@ public class CloudinaryService {
 
             // Xác định resource_type dựa trên ContentType (MIME type)
             String contentType = file.getContentType();
-            logger.info("Uploading file with Content-Type: {}", contentType);
 
             if (contentType != null && VIDEO_MIME_TYPES.contains(contentType.toLowerCase())) {
                 uploadOptions.put("resource_type", "video"); // Báo cho Cloudinary đây là video
-                logger.info("Setting resource_type to 'video'");
             } else {
                 // Mặc định là 'image' nếu không phải video hoặc không xác định được
                 uploadOptions.put("resource_type", "image");
-                logger.info("Setting resource_type to 'image'");
             }
             // === KẾT THÚC THAY ĐỔI ===
 
@@ -56,14 +53,12 @@ public class CloudinaryService {
             Map uploadResult = cloudinary.uploader().upload(file.getBytes(), uploadOptions);
 
             String secureUrl = uploadResult.get("secure_url").toString();
-            logger.info("Upload thành công lên Cloudinary. URL: {}", secureUrl);
+
             return secureUrl;
 
         } catch (IOException e) {
-            logger.error("Lỗi I/O khi đọc file: {}", e.getMessage());
             throw new RuntimeException("Could not read upload file", e);
         } catch (Exception e) { // Bắt lỗi chung từ Cloudinary
-            logger.error("Lỗi khi upload lên Cloudinary: {}", e.getMessage(), e);
             // Ném lại lỗi gốc hoặc lỗi RuntimeException tùy bạn chọn
             // Quan trọng là phải bắt lỗi ở Controller để trả về 500
             throw new RuntimeException("Could not upload file to Cloudinary: " + e.getMessage(), e);

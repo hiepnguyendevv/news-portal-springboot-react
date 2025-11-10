@@ -118,11 +118,6 @@ public class AdminNewsController {
                                         @RequestPart(value = "image", required = false) MultipartFile imageFile,
                                         @RequestPart("news") String newJson) { // Đã sửa tên biến thành newJson
 
-        // === BƯỚC DEBUG 1: In ra JSON ===
-        System.out.println("------------------------------------");
-        System.out.println("Received newsJson string:");
-        System.out.println(newJson); // In chuỗi JSON nhận được
-        System.out.println("------------------------------------");
 
         try {
             String imageUrl = null;
@@ -135,9 +130,8 @@ public class AdminNewsController {
             }
 
             ObjectMapper mapper = new ObjectMapper();
-            NewsCreateDto newsDto = null; // Khởi tạo là null
+            NewsCreateDto newsDto = null;
 
-            // === BƯỚC DEBUG 2: Bắt lỗi Deserialization ===
             try {
                 newsDto = mapper.readValue(newJson, NewsCreateDto.class);
                 System.out.println("Tạo newsDto thành công!"); // Log thành công

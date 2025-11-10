@@ -205,13 +205,12 @@ public class LiveContentService {
     }
 
     private String extractPublicIdFromUrl(String imageUrl) {
-        // Regex tìm phần sau /upload/v<số>/ cho đến trước dấu chấm cuối cùng (đuôi file)
         Pattern pattern = Pattern.compile("/upload/(?:v\\d+/)?([^.]+?)(\\.\\w+)?$");
         Matcher matcher = pattern.matcher(imageUrl);
         if (matcher.find()) {
-            return matcher.group(1); // Trả về group 1 (phần public_id bao gồm cả folder nếu có)
+            return matcher.group(1);
         }
-        return null; // Không tìm thấy
+        return null;
     }
 
 

@@ -33,9 +33,6 @@ public class CommentLike {
         this.createdAt = createdAt;
     }
 
-    public Comment getComment() {
-        return comment;
-    }
 
     public void setComment(Comment comment) {
         this.comment = comment;

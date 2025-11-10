@@ -2,12 +2,12 @@
 import React, { useState, useRef,useEffect } from 'react';
 import { Editor } from '@tinymce/tinymce-react';
 import { newsAPI } from '../../services/api';
-const EntryForm = ({ onSubmit, isConnected, newsId  }) => {
+const EntryForm = ({ onSubmit, isConnected }) => {
     const [imageFile, setImageFile] = useState(null);
     const [imagePreviewUrl, setImagePreviewUrl] = useState('');
     const [uploading, setUploading] = useState(false);
-    const [pin, setPin] = useState(false); // <-- State local
-    const [sortOrder, setSortOrder] = useState(''); // <-- State local
+    const [pin, setPin] = useState(false); 
+    const [sortOrder, setSortOrder] = useState(''); 
     const fileInputRef = useRef(null);
     const editorRef = useRef(null);
 
@@ -23,7 +23,6 @@ const EntryForm = ({ onSubmit, isConnected, newsId  }) => {
     const removeFile = () => {
         setImageFile(null);
         setImagePreviewUrl('');
-        // setMediaUrl('');
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
@@ -42,7 +41,7 @@ const EntryForm = ({ onSubmit, isConnected, newsId  }) => {
         const currentContent = (editorRef.current) ? editorRef.current.getContent() : '';
         const currentText = (editorRef.current) ? editorRef.current.getContent({ format: 'text' }).trim() : '';
 
-        if (!currentText && !imageFile) { // Sửa validation
+        if (!currentText && !imageFile) { 
             alert('Nội dung hoặc media không được để trống');
             return;
         }
@@ -135,12 +134,12 @@ const EntryForm = ({ onSubmit, isConnected, newsId  }) => {
                             )}
                         </div>
 
-                        {/* Content - TinyMCE giống CreateNews */}
                         <div className="mb-3">
                             <label htmlFor="entry-content-editor" className="form-label fw-bold">Nội dung <span className="text-danger">*</span></label>
                             <Editor
                                 id="entry-content-editor"
                                 apiKey='29h0bkhxlcdk5pu2h6wc6b0mtk6rpojdadtsvvv1af739dym'
+                                
                                 onInit={(evt, editor) => editorRef.current = editor}
                                 initialValue=""
                                 init={{
@@ -156,7 +155,9 @@ const EntryForm = ({ onSubmit, isConnected, newsId  }) => {
                                       'bold italic forecolor | alignleft aligncenter ' +
                                       'alignright alignjustify | bullist numlist outdent indent | ' +
                                       'link image media | removeformat | help',
+                                      extended_valid_elements: 'span[style],p[style],h1[style],h2[style],h3[style]'
                                 }}
+                                
                             />
                         </div>
                         <div className="text-end mt-3">

@@ -20,13 +20,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.addEndpoint("/ws")
                 .setAllowedOrigins(
                         "http://localhost:3001",
-                    "http://localhost:3000",
-                    "https://hiepnguyen.click",
-                    "http://hiepnguyen.click",
-                    "https://www.hiepnguyen.click",
-                    "http://www.hiepnguyen.click",
-                    "http://150.95.109.169:3000",
-                    "http://150.95.109.169"
+                        "http://localhost:3000",
+                        "https://hiepnguyen.click",
+                        "http://hiepnguyen.click",
+                        "https://www.hiepnguyen.click",
+                        "http://www.hiepnguyen.click",
+                        "http://150.95.109.169:3000",
+                        "http://150.95.109.169"
                 )
                 .withSockJS();
     }

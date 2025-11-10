@@ -17,7 +17,7 @@ const Home = () => {
     try {
       setLoading(true);
       const response = await newsAPI.getPublishedNewsPaged(page, 12);
-      console.log(response.data);
+      // console.log(response.data);
       // console.log(response.data.totalElement);
       setData({
         content: response.data.content,

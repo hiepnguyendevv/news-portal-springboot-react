@@ -122,9 +122,8 @@ const CreateNews = () => {
       });
       setImageFile(null);
       setImagePreviewUrl('');
-      document.getElementById('imageFile').value = ''; // Reset input file
+      document.getElementById('imageFile').value = ''; 
 
-      // Điều hướng
       navigate(`/admin/live-news/${response.data.id}`);
 
     } catch (err) {
