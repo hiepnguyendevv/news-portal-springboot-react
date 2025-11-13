@@ -178,7 +178,7 @@ const filePickerCallback = (callback, value, meta) => {
       currentContent = editorRef.current.getContent(); 
     }
     
-    if (!formData.title || !currentContent || !formData.categoryId || !formData.tags.length || !imageFile) {
+    if (!formData.title || !currentContent || !formData.categoryId || /*!formData.tags.length ||*/ !imageFile) {
       toast.warning('Vui lòng điền đầy đủ thông tin bắt buộc và chọn ảnh bìa');
       return;
     }
@@ -258,209 +258,203 @@ const filePickerCallback = (callback, value, meta) => {
             </div>
             <div className="card-body">
               <form onSubmit={handleSubmit}>
+                {/* === PHẦN THÔNG TIN CƠ BẢN === */}
                 <div className="row">
-                  
-                  {/* === CỘT BÊN TRÁI (8) === */}
-                  <div className="col-md-8">
+                  {/* Title */}
+                  <div className="col-md-8 mb-3">
+                    <label htmlFor="title" className="form-label">
+                      Tiêu đề <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      id="title"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleChange}
+                      placeholder="Nhập tiêu đề tin tức..."
+                      required
+                    />
+                  </div>
 
-                    {/* Title */}
-                    <div className="mb-3">
-                      <label htmlFor="title" className="form-label">
-                        Tiêu đề <span className="text-danger">*</span>
-                      </label>
+                  {/* Category */}
+                  <div className="col-md-4 mb-3">
+                    <label htmlFor="categoryId" className="form-label">
+                      Danh mục <span className="text-danger">*</span>
+                    </label>
+                    <select
+                      className="form-select"
+                      id="categoryId"
+                      name="categoryId"
+                      value={formData.categoryId}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="">Chọn danh mục</option>
+                      {categories.map(category => (
+                        <option key={category.id} value={category.id}>
+                          {'--'.repeat(category.level)} {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Summary */}
+                <div className="mb-3">
+                  <label htmlFor="summary" className="form-label">
+                    Tóm tắt
+                  </label>
+                  <textarea
+                    className="form-control"
+                    id="summary"
+                    name="summary"
+                    rows="3"
+                    value={formData.summary}
+                    onChange={handleChange}
+                    placeholder="Nhập tóm tắt tin tức..."
+                  />
+                </div>
+
+                {/* === CONTENT EDITOR - FULL WIDTH === */}
+                <div className="mb-3">
+                  <label htmlFor="content-editor" className="form-label">
+                    Nội dung <span className="text-danger">*</span>
+                  </label>
+                  <Editor
+                    id="content-editor"
+                    apiKey='29h0bkhxlcdk5pu2h6wc6b0mtk6rpojdadtsvvv1af739dym'
+                    onInit={(evt, editor) => editorRef.current = editor}
+                    initialValue="" // Bắt đầu bằng rỗng
+                    init={{
+                      height: 1000,
+                      menubar: false,
+                      placeholder: "Nhập nội dung chi tiết bài viết...",
+                      plugins: [
+                        'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+                        'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                        'insertdatetime', 'media', 'table', 'help', 'wordcount'
+                      ],
+                      toolbar: 'undo redo | blocks' +
+                        'bold italic forecolor | alignleft aligncenter ' +
+                        // 'alignright alignjustify | bullist numlist outdent indent | ' +
+                        'link image media | removeformat | help',
+                        extended_valid_elements: 'span[style],p[style],h1[style],h2[style],h3[style]',
+                        // 1. Đổi tên handler (để xử lý kéo-thả ảnh)
+                        images_upload_handler: handleFileUpload, 
+                        
+                        // 2. Thêm 2 dòng này để xử lý nút "browse"
+                        file_picker_callback: filePickerCallback,
+                        file_picker_types: 'image media', // Áp dụng cho cả dialog ảnh và media
+
+                        // --- KẾT THÚC SỬA ĐỔI ---
+                        automatic_uploads: true,
+                    }}
+                    
+                  />
+                </div>
+
+                {/* === PHẦN THÔNG TIN BỔ SUNG === */}
+                <div className="row">
+                  {/* Image File */}
+                  <div className="col-md-6 mb-3">
+                    <label htmlFor="imageFile" className="form-label">
+                      Ảnh bìa <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      type="file"
+                      className="form-control"
+                      id="imageFile"
+                      accept="image/*" 
+                      name="imageFile"
+                      onChange={handleFileChange}
+                    />
+                    {imagePreviewUrl && (
+                      <img 
+                        src={imagePreviewUrl} 
+                        alt="Preview" 
+                        className="img-thumbnail mt-2"
+                        style={{ maxWidth: '200px', maxHeight: '150px' }}
+                      />
+                    )}
+                  </div>
+
+                  {/* Options */}
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label">Tùy chọn</label>
+                    <div className="form-check">
                       <input
-                        type="text"
-                        className="form-control"
-                        id="title"
-                        name="title"
-                        value={formData.title}
+                        className="form-check-input"
+                        type="checkbox"
+                        id="published"
+                        name="published"
+                        checked={formData.published}
                         onChange={handleChange}
-                        placeholder="Nhập tiêu đề tin tức..."
-                        required
                       />
-                    </div>
-
-                    {/* Summary */}
-                    <div className="mb-3">
-                      <label htmlFor="summary" className="form-label">
-                        Tóm tắt
+                      <label className="form-check-label" htmlFor="published">
+                        Xuất bản ngay
                       </label>
-                      <textarea
-                        className="form-control"
-                        id="summary"
-                        name="summary"
-                        rows="3"
-                        value={formData.summary}
-                        onChange={handleChange}
-                        placeholder="Nhập tóm tắt tin tức..."
-                      />
                     </div>
-
-                    {/* Content (ĐÃ CHUYỂN VỀ ĐÂY) */}
-                    <div className="mb-3">
-                      <label htmlFor="content-editor" className="form-label">
-                        Nội dung <span className="text-danger">*</span>
-                      </label>
-                      <Editor
-                        id="content-editor"
-                        apiKey='29h0bkhxlcdk5pu2h6wc6b0mtk6rpojdadtsvvv1af739dym'
-                        onInit={(evt, editor) => editorRef.current = editor}
-                        initialValue="" // Bắt đầu bằng rỗng
-                        init={{
-                          height: 350,
-                          menubar: false,
-                          placeholder: "Nhập nội dung chi tiết bài viết...",
-                          plugins: [
-                            'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-                            'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-                            'insertdatetime', 'media', 'table', 'help', 'wordcount'
-                          ],
-                          toolbar: 'undo redo | blocks' +
-                            'bold italic forecolor | alignleft aligncenter ' +
-                            // 'alignright alignjustify | bullist numlist outdent indent | ' +
-                            'link image media | removeformat | help',
-                            extended_valid_elements: 'span[style],p[style],h1[style],h2[style],h3[style]',
-                            // 1. Đổi tên handler (để xử lý kéo-thả ảnh)
-                            images_upload_handler: handleFileUpload, 
-                            
-                            // 2. Thêm 2 dòng này để xử lý nút "browse"
-                            file_picker_callback: filePickerCallback,
-                            file_picker_types: 'image media', // Áp dụng cho cả dialog ảnh và media
-
-                            // --- KẾT THÚC SỬA ĐỔI ---
-                            automatic_uploads: true,
-                          }}
-                          
-                      />
-                    </div>
-
-                  </div> 
-                  
-
-                  <div className="col-md-4">
-
-                    <div className="mb-3">
-                      <label htmlFor="categoryId" className="form-label">
-                        Danh mục <span className="text-danger">*</span>
-                      </label>
-                      <select
-                        className="form-select"
-                        id="categoryId"
-                        name="categoryId"
-                        value={formData.categoryId}
-                        onChange={handleChange}
-                        required
-                      >
-                        <option value="">Chọn danh mục</option>
-                        {categories.map(category => (
-                          <option key={category.id} value={category.id}>
-                            {'--'.repeat(category.level)} {category.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Image File*/}
-                    <div className="mb-3">
-                      <label htmlFor="imageFile" className="form-label">
-                        Ảnh bìa <span className="text-danger">*</span>
-                      </label>
+                    <div className="form-check">
                       <input
-                        type="file"
-                        className="form-control"
-                        id="imageFile"
-                        accept="image/*" 
-                        name="imageFile"
-                        onChange={handleFileChange}
+                        className="form-check-input"
+                        type="checkbox"
+                        id="featured"
+                        name="featured"
+                        checked={formData.featured}
+                        onChange={handleChange}
                       />
-                      {imagePreviewUrl && (
-                        <img 
-                          src={imagePreviewUrl} 
-                          alt="Preview" 
-                          className="img-thumbnail mt-2"
-                          style={{ maxWidth: '200px', maxHeight: '150px' }}
-                        />
-                      )}
-                    </div>
-
-                    {/* Options */}
-                    <div className="mb-3">
-                      <div className="form-check">
-                        <input
-                          className="form-check-input"
-                          type="checkbox"
-                          id="published"
-                          name="published"
-                          checked={formData.published}
-                          onChange={handleChange}
-                        />
-                        <label className="form-check-label" htmlFor="published">
-                          Xuất bản ngay
-                        </label>
-                      </div>
-                    </div>
-                    <div className="mb-3">
-                      <div className="form-check">
-                        <input
-                          className="form-check-input"
-                          type="checkbox"
-                          id="featured"
-                          name="featured"
-                          checked={formData.featured}
-                          onChange={handleChange}
-                        />
-                        <label className="form-check-label" htmlFor="featured">
-                          Tin tức nổi bật
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Tags  */}
-                    <div className="mb-3">
-                      <label htmlFor="tags" className="form-label">
-                        Tags <span className="text-danger">*</span>
+                      <label className="form-check-label" htmlFor="featured">
+                        Tin tức nổi bật
                       </label>
-                      <div className="d-flex flex-wrap gap-2">
-                        {tags.map(tag => {
-                          const selected = formData.tags.includes(tag.name);
-                          return (
-                            <button
-                              key={tag.id}
-                              type="button"
-                              className={`btn btn-sm ${selected ? 'btn-primary' : 'btn-outline-secondary'}`}
-                              onClick={() => handleToggleTag(tag.name)}
-                            >
-                              {tag.name}
-                            </button>
-                          );
-                        })}
-                      </div>
                     </div>
+                  </div>
+                </div>
 
-                    {/* Submit Button */}
-                    <div className="d-grid mt-2">
-                      <button
-                        type="submit"
-                        className="btn btn-primary"
-                        disabled={loading}
-                      >
-                        {loading ? (
-                          <>
-                            <span className="spinner-border spinner-border-sm me-2"></span>
-                            Đang tạo...
-                          </>
-                        ) : (
-                          <>
-                            <i className="fas fa-save me-1"></i>
-                            Tạo tin tức
-                          </>
-                        )}
-                      </button>
-                    </div>
+                {/* Tags  */}
+                {/*
+                <div className="mb-3">
+                  <label htmlFor="tags" className="form-label">
+                    Tags <span className="text-danger">*</span>
+                  </label>
+                  <div className="d-flex flex-wrap gap-2">
+                    {tags.map(tag => {
+                      const selected = formData.tags.includes(tag.name);
+                      return (
+                        <button
+                          key={tag.id}
+                          type="button"
+                          className={`btn btn-sm ${selected ? 'btn-primary' : 'btn-outline-secondary'}`}
+                          onClick={() => handleToggleTag(tag.name)}
+                        >
+                          {tag.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                */}
 
-                  </div> 
-
-                </div> 
+                {/* Submit Button */}
+                <div className="d-grid mt-4">
+                  <button
+                    type="submit"
+                    className="btn btn-primary btn-lg"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2"></span>
+                        Đang tạo...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-save me-1"></i>
+                        Tạo tin tức
+                      </>
+                    )}
+                  </button>
+                </div>
               </form>
             </div>
           </div>

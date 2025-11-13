@@ -94,6 +94,14 @@ public class  AuthController {
 
             System.out.println("Token sau khi refresh: "+ newRawRefreshToken);
             String newAccessToken = jwtUtil.generateTokenFromUsername(user.getUsername());
+            
+            // Set authentication vào SecurityContext sau khi refresh token
+            // Để WebSocket và các request khác có thể sử dụng
+            UserPrincipal userPrincipal = UserPrincipal.create(user);
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(userPrincipal, null, userPrincipal.getAuthorities());
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            
             ResponseCookie newRefreshCookie = cookieUtil.createRefreshCookie(newRawRefreshToken);
             return ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE, newRefreshCookie.toString())

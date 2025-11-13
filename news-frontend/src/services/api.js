@@ -3,22 +3,26 @@
 
     const api = axios.create({
         baseURL: API_URL,
-        withCredentials: true, // Rất quan trọng: để gửi cookie HttpOnly
+        withCredentials: true, 
     });
 
-    // 1. CHÚNG TA KHÔNG DÙNG LOCALSTORAGE NỮA.
-    // Lưu Access Token (AT) trong bộ nhớ.
+    const refreshApi = axios.create({
+        baseURL: API_URL,
+        withCredentials: true,
+    });
+
     let inMemoryAccessToken = null;
 
-    // Hàm để AuthContext có thể set token này khi login/refresh
     export const setAccessToken = (token) => {
         inMemoryAccessToken = token;
     };
 
-    // Interceptor GỬI request
+    export const getAccessToken = () => {
+        return inMemoryAccessToken;
+    };
+
     api.interceptors.request.use(
         (config) => {
-            // Lấy token từ bộ nhớ, không phải localStorage
             if (inMemoryAccessToken) {
                 config.headers.Authorization = `Bearer ${inMemoryAccessToken}`;
             }
@@ -27,9 +31,9 @@
         (error) => Promise.reject(error)
     );
 
-    // 2. INTERCEPTOR NHẬN RESPONSE (LOGIC QUAN TRỌNG NHẤT)
+   
     let isRefreshing = false;
-    let failedQueue = []; // Hàng đợi các request bị lỗi 401
+    let failedQueue = []; 
 
     const processQueue = (error, token = null) => {
         failedQueue.forEach(prom => {
@@ -43,52 +47,47 @@
     };
 
     api.interceptors.response.use(
-        (response) => response, // Nếu thành công, trả về
+        (response) => response,
         async (error) => {
+            console.log("Lỗi API:", error.response?.status);
             const originalRequest = error.config;
             
-            
-            // Chỉ xử lý khi lỗi là 401 VÀ chưa từng thử lại request này
-            if (error.response?.status === 401 && !originalRequest._retry) {
+            if ((error.response?.status === 401 || error.response?.status === 403) 
+                && !originalRequest._retry) {
                 
                 if (isRefreshing) {
-                    // Nếu đang có 1 request refresh rồi, thì đưa request này vào hàng đợi
                     return new Promise((resolve, reject) => {
                         failedQueue.push({ resolve, reject });
                     }).then(token => {
                         originalRequest.headers.Authorization = 'Bearer ' + token;
-                        return api(originalRequest); // Thử lại với token mới
+                        return api(originalRequest); 
                     });
                 }
 
-                originalRequest._retry = true; // Đánh dấu là đã thử lại
+                originalRequest._retry = true; 
                 isRefreshing = true;
 
                 try {
-                    // 3. Gọi API /refresh
-                    const rs = await api.post('/auth/refresh'); // Không cần payload, cookie đã được gửi
+            
+                    const rs = await refreshApi.post('/auth/refresh'); 
                     
                     const { accessToken } = rs.data;
-                    setAccessToken(accessToken); // Lưu AT mới vào bộ nhớ
+                    setAccessToken(accessToken); 
 
-                    // Cập nhật AT cho request hiện tại và các request trong hàng đợi
                     api.defaults.headers.common.Authorization = 'Bearer ' + accessToken;
                     originalRequest.headers.Authorization = 'Bearer ' + accessToken;
-                    processQueue(null, accessToken); // Giải quyết hàng đợi
+                    processQueue(null, accessToken); 
 
                     isRefreshing = false;
-                    return api(originalRequest); // Thử lại request gốc
+                    return api(originalRequest); 
 
                 } catch (_error) {
-                    // 4. Nếu REFRESH thất bại (RT hết hạn/bị thu hồi)
+                 
                     isRefreshing = false;
-                    processQueue(_error, null); // Báo lỗi cho các request trong hàng đợi
+                    processQueue(_error, null); 
                     
-                    // Đăng xuất người dùng
-                    setAccessToken(null); // Xóa token
+                    setAccessToken(null); 
                     
-                    // Gửi thông báo toàn cục để AuthContext biết và logout
-                    // (Cách này tốt hơn là redirect ở đây)
                     window.dispatchEvent(new Event("auth-failed"));
                     
                     return Promise.reject(_error);
@@ -170,8 +169,8 @@
     getCurrentUser: async () => api.get("/auth/me"), 
     logout: async () => api.post("/auth/logout"),
 
-    // API Refresh mới
-    refreshToken: async () => api.post("/auth/refresh"),
+    // API Refresh mới - Dùng refreshApi để tránh vòng lặp vô hạn
+    refreshToken: async () => refreshApi.post("/auth/refresh"),
     // Profile APIs (current user)
     updateMyProfile: async (payload) => api.put('/auth/me', payload),
 
@@ -221,7 +220,6 @@
         if (filters.page) params.append('page', filters.page);
         if (filters.size) params.append('size', filters.size);
         
-        console.log('Search comment API call with params:', params.toString());
         return api.get(`/admin/comment/search?${params.toString()}`);
     },
     //
@@ -244,7 +242,6 @@
             return response.data.url; 
 
         } catch (err) {
-            console.error("Upload API Error:", err.response?.data || err.message);
             throw err; 
         }
     },
@@ -265,7 +262,6 @@
             };
 
         } catch (err) {
-            console.error("Upload API Error:", err.response?.data || err.message);
             throw err; 
         }
     },

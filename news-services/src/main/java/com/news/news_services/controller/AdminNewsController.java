@@ -3,9 +3,7 @@
     import com.fasterxml.jackson.databind.ObjectMapper;
     import com.news.news_services.dto.NewsCreateDto;
     import com.news.news_services.dto.NewsResponseDto;
-    import com.news.news_services.entity.Category;
     import com.news.news_services.entity.News;
-    import com.news.news_services.entity.User;
     import com.news.news_services.repository.*;
     import com.news.news_services.service.*;
     import org.springframework.beans.factory.annotation.Autowired;
@@ -52,19 +50,11 @@
     
         @Autowired
         private NotificationService notificationService;
-    
-        @Autowired
-        private TagService tagService;
-    
-        @Autowired
-        private TagGenerationService tagGenerationService;
-    
-    
+
         @Autowired
         private CloudinaryService cloudinaryService;
-    
-    
-        //lấy tất cả tin tức
+
+
         @GetMapping
         public Page<News> getAllNews(@RequestParam(defaultValue = "0")int page,
                                      @RequestParam(defaultValue = "20")int size) {
@@ -95,10 +85,9 @@
                                               @RequestPart("news") String newJson) {
             try {
     
-                // === BƯỚC DEBUG 1: In ra JSON ===
                 System.out.println("------------------------------------");
                 System.out.println("Received newsJson string:");
-                System.out.println(newJson); // In chuỗi JSON nhận được
+                System.out.println(newJson);
                 System.out.println("------------------------------------");
                 String imageUrl = cloudinaryService.uploadFile(imageFile);
     
@@ -107,7 +96,7 @@
     
                 News savedNewsEntity = newsService.createMyNews(newsDto, imageUrl);
     
-                NewsResponseDto responseDTO = new NewsResponseDto(savedNewsEntity);// Pass DTO and URL
+                NewsResponseDto responseDTO = new NewsResponseDto(savedNewsEntity);
                 return ResponseEntity.ok(responseDTO);
             } catch (Exception e) {
                 System.err.println("Error creating my news: " + e.getMessage());
@@ -126,11 +115,11 @@
             try {
                 String imageUrl = null;
                 if (imageFile != null && !imageFile.isEmpty()) {
-                    System.out.println("Attempting to upload new image..."); // Thêm log
+                    System.out.println("Attempting to upload new image...");
                     imageUrl = cloudinaryService.uploadFile(imageFile);
                     System.out.println("Upload ảnh mới thành công, URL: " + imageUrl);
                 } else {
-                    System.out.println("No new image file provided."); // Thêm log
+                    System.out.println("No new image file provided.");
                 }
     
                 ObjectMapper mapper = new ObjectMapper();
@@ -138,24 +127,18 @@
     
                 try {
                     newsDto = mapper.readValue(newJson, NewsCreateDto.class);
-                    System.out.println("Tạo newsDto thành công!"); // Log thành công
-                    // In ra nội dung DTO để kiểm tra
+                    System.out.println("Tạo newsDto thành công!");
                     System.out.println("Parsed News DTO: " + newsDto.toString()); // Cần @ToString hoặc tự in các trường
                 } catch (Exception e) {
-                    System.err.println("!!! LỖI KHI PARSE JSON SANG NewsCreateDto !!!");
-                    e.printStackTrace(); // In ra toàn bộ lỗi Jackson chi tiết
-                    // Trả về lỗi 400 ngay lập tức với thông tin lỗi
+                    e.printStackTrace();
                     return ResponseEntity.badRequest()
                             .body(Map.of("error", "Lỗi định dạng dữ liệu gửi lên: " + e.getMessage()));
                 }
-                // === HẾT BƯỚC DEBUG 2 ===
-    
-                // Nếu parse thành công, tiếp tục gọi service
                 News existingNews = newsService.updateMyNews(id, newsDto, imageUrl);
                 NewsResponseDto responseDTO = new NewsResponseDto(existingNews);
                 return ResponseEntity.ok(responseDTO);
     
-            } catch (Exception e) { // Bắt các lỗi khác (ví dụ: lỗi service)
+            } catch (Exception e) {
                 System.err.println("!!! LỖI TRONG QUÁ TRÌNH UPDATE NEWS !!!");
                 e.printStackTrace();
                 return ResponseEntity.badRequest()
@@ -163,7 +146,6 @@
             }
         }
     
-        //xóa news
         @Transactional
         @DeleteMapping("/{id}")
         public ResponseEntity<?> deleteNews(@PathVariable Long id) {
@@ -171,11 +153,11 @@
                 throw new RuntimeException("News not found with id: " + id);
             }
             News news = newsRepository.findById(id).orElseThrow();
-    
+
             commentLikesRepository.deleteByNewsId(id);
             commentRepository.deleteByNewsId(id);
             bookmarkRepository.deleteByNewsId(id);
-    
+
             newsService.deleteMyNews(id);
             return ResponseEntity.ok("News deleted successfully");
         }
@@ -236,12 +218,9 @@
     
                 for (Long id : newsIds) {
                     if (newsRepository.existsById(id)) {
-                        //xóa phụ thuộc
                         commentLikesRepository.deleteByNewsId(id);
                         commentRepository.deleteByNewsId(id);
                         bookmarkRepository.deleteByNewsId(id);
-    
-                        //xóa news
                         newsService.deleteMyNews(id);
                     }
                 }

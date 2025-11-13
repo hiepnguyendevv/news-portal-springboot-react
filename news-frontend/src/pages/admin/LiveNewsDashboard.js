@@ -5,77 +5,91 @@ import { Client } from '@stomp/stompjs';
 import EntryForm from '../../components/live-news/EntryForm';
 import EntryList from '../../components/live-news/EntryList';
 import EditEntryModal from '../../components/live-news/EditEntryModal';
+import ConfirmModal from '../../components/ConfirmModal';
+import { useAuth } from '../../components/AuthContext';
+import { getAccessToken } from '../../services/api';
 
 const LiveNewsDashboard = () => {
   const { newsId } = useParams();
+  const { user, loading: authLoading } = useAuth();
   const [entries, setEntries] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState(null);
   const clientRef = useRef(null);
 
 
-  useEffect(() => {
-        const connect = () => {
-        const socket = new SockJS('/ws');
-        const client = new Client({
-          webSocketFactory: () => socket,
-                debug: () => {},
-          reconnectDelay: 5000,
-            });
-
-            client.onConnect = () => {
-                console.log('Đã kết nối WebSocket');
-                setIsConnected(true);
-                client.subscribe(`/topic/live/${newsId}`, (frame) => {
-                    const eventData = JSON.parse(frame.body);
-                    console.log('eventData', eventData);
-                    
-                    switch(eventData.action){
-                        case 'ADD_ENTRY':
-                            console.log('add successfuly');
-                            setEntries(prev => [eventData, ...prev]);
-                            break;
-                        case 'UPDATE_ENTRY':
-                            console.log('update successfuly');
-                            setEntries(prev => prev.map(entry => entry.id === eventData.id ? eventData : entry));
-                            break;
-
-                        case 'REMOVE_ENTRY':
-                            setEntries(prev => prev.filter(entry => entry.id !== eventData.id));
-                            console.log('remove successfuly');
-                            break;
-                        default:
-                            console.error('Unknown action:', eventData.action);
-                            break;
-                    }
-                });
-            };
-
-            client.onStompError = (frame) => {
-                console.error('Lỗi kết nối STOMP:', frame.headers['message']);
-                setIsConnected(false);
-            };
-
-            client.onWebSocketClose = () => {
-                console.log('Kết nối WebSocket đã đóng');
-                setIsConnected(false);
-            };
-
-            client.activate();
-                clientRef.current = client;
-    };
-
-        if (newsId) {
-            connect();
-        }
-
-    return () => {
-            if (clientRef.current?.active) {
-                clientRef.current.deactivate();
+    useEffect(() => {
+            // Đợi authentication xong rồi mới kết nối WebSocket
+            if (authLoading || !newsId) {
+                return;
             }
-    };
-  }, [newsId]);
+            
+            const connect = () => {
+            const socket = new SockJS('/ws');
+            const token = getAccessToken();
+            const client = new Client({
+            webSocketFactory: () => socket,
+                    debug: () => {},
+            reconnectDelay: 5000,
+            connectHeaders: token ? {
+                Authorization: `Bearer ${token}`
+            } : {},
+                });
+
+                client.onConnect = () => {
+                    console.log('Đã kết nối WebSocket');
+                    setIsConnected(true);
+                    client.subscribe(`/topic/live/${newsId}`, (frame) => {
+                        const eventData = JSON.parse(frame.body);
+                        console.log('eventData', eventData);
+                        
+                        switch(eventData.action){
+                            case 'ADD_ENTRY':
+                                console.log('add successfuly');
+                                setEntries(prev => [eventData, ...prev]);
+                                break;
+                            case 'UPDATE_ENTRY':
+                                console.log('update successfuly');
+                                setEntries(prev => prev.map(entry => entry.id === eventData.id ? eventData : entry));
+                                break;
+
+                            case 'REMOVE_ENTRY':
+                                setEntries(prev => prev.filter(entry => entry.id !== eventData.id));
+                                console.log('remove successfuly');
+                                break;
+                            default:
+                                console.error('Unknown action:', eventData.action);
+                                break;
+                        }
+                    });
+                };
+
+                client.onStompError = (frame) => {
+                    console.error('Lỗi kết nối STOMP:', frame.headers['message']);
+                    setIsConnected(false);
+                };
+
+                client.onWebSocketClose = () => {
+                    console.log('Kết nối WebSocket đã đóng');
+                    setIsConnected(false);
+                };
+
+                client.activate();
+                    clientRef.current = client;
+        };
+
+            connect();
+
+        return () => {
+                if (clientRef.current?.active) {
+                    clientRef.current.deactivate();
+                }
+        };
+    }, [newsId, authLoading]);
+    
 
     useEffect(() => {
         const loadInitialData = async () => {
@@ -89,6 +103,7 @@ const LiveNewsDashboard = () => {
                 setEntries(data.content);
             } catch (err) {
                 console.error('Error loading initial data:', err);
+                setEntries([]); // Set empty array on error
             }
         };
 
@@ -96,6 +111,7 @@ const LiveNewsDashboard = () => {
             loadInitialData();
         }
     }, [newsId]);
+    
 
     const sendEntry = (payload) => {
         if (!clientRef.current?.active) {
@@ -103,10 +119,15 @@ const LiveNewsDashboard = () => {
             return;
         }
 
+        // Thêm userId vào payload
+        const payloadWithUserId = {
+            ...payload,
+            userId: user?.id
+        };
 
         clientRef.current.publish({
             destination: `/app/live/${newsId}/addEntry`,
-            body: JSON.stringify(payload),
+            body: JSON.stringify(payloadWithUserId),
             
       });
 
@@ -147,24 +168,38 @@ const LiveNewsDashboard = () => {
         onSaveEdit(updatedEntry);
     };
 
-    const onDelete = async (entry) => {
-        if (window.confirm('Bạn có chắc muốn xóa entry này?')) {
-           
-            if (!clientRef.current?.active) {
-                console.error('Không thể xóa: Mất kết nối WebSocket.');
-                return;
-            }
-    
-            const payload = {
-                action: 'REMOVE_ENTRY',
-                id: entry.id 
-            };
-    
-            clientRef.current.publish({
-                destination: `/app/live/${newsId}/deleteEntry`,
-                body: JSON.stringify(payload),
-            });
+    const onDelete = (entry) => {
+        setEntryToDelete(entry);
+        setShowDeleteModal(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (!entryToDelete) return;
+
+        if (!clientRef.current?.active) {
+            console.error('Không thể xóa: Mất kết nối WebSocket.');
+            setShowDeleteModal(false);
+            setEntryToDelete(null);
+            return;
         }
+
+        const payload = {
+            action: 'REMOVE_ENTRY',
+            id: entryToDelete.id 
+        };
+
+        clientRef.current.publish({
+            destination: `/app/live/${newsId}/deleteEntry`,
+            body: JSON.stringify(payload),
+        });
+
+        setShowDeleteModal(false);
+        setEntryToDelete(null);
+    };
+
+    const handleCancelDelete = () => {
+        setShowDeleteModal(false);
+        setEntryToDelete(null);
     };
 
 
@@ -190,6 +225,17 @@ const LiveNewsDashboard = () => {
               onClose={() => setShowEditModal(false)}
               onSave={onSaveEdit}
               isConnected={isConnected}
+          />
+
+          <ConfirmModal
+              show={showDeleteModal}
+              title="Xóa entry"
+              message="Bạn có chắc chắn muốn xóa tin này? Hành động này không thể hoàn tác."
+              confirmText="Xóa"
+              cancelText="Hủy"
+              confirmBtnClass="btn-danger"
+              onConfirm={handleConfirmDelete}
+              onClose={handleCancelDelete}
           />
     </div>
   );

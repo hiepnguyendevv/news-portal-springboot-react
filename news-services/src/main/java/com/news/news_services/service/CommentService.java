@@ -109,6 +109,7 @@ public class CommentService {
         comment.setContent(content);
         comment.setNews(news);
         comment.setUser(user);
+        comment.setCreatedAt(Instant.now());
 
         if(parentId != null){
             Comment parent = commentRepository.findById(parentId).orElse(null);

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../components/AuthContext';
-import { newsAPI } from '../services/api';
+import { newsAPI, setAccessToken } from '../services/api';
 
 const OAuth2Callback = () => {
   const [loading, setLoading] = useState(true);
@@ -23,7 +23,8 @@ const OAuth2Callback = () => {
       
       
       if (token) {
-        localStorage.setItem('token', token);
+        // Lưu token vào bộ nhớ (không dùng localStorage nữa)
+        setAccessToken(token);
         
         // Gọi API để lấy thông tin user
         const me = await newsAPI.getCurrentUser();

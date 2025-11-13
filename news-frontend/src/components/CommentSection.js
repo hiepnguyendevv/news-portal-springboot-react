@@ -19,7 +19,6 @@ const CommentSection = ({ newsId }) => {
     try {
       const response = await newsAPI.getComments(newsId);
       const commentsData = response.data || [];
-      // console.log(commentsData);
       setComments(commentsData);
 
       const likedSet = new Set();

@@ -85,7 +85,7 @@ const CreateNews = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.title || !formData.categoryId || !formData.tags.length || !imageFile) {
+    if (!formData.title || !formData.categoryId || !imageFile) {
       toast.warning('Vui lòng điền đầy đủ thông tin bắt buộc và chọn ảnh bìa');
       return;
     }
@@ -243,9 +243,9 @@ const CreateNews = () => {
                       )}
                     </div>
 
-                    <div className="mb-3">
+                    {/* <div className="mb-3">
                       <label className="form-label d-block">
-                        Thẻ <span className="text-danger">*</span>
+                        Thẻ 
                       </label>
                       <div className="d-flex flex-wrap gap-2">
                         {tags.map(tag => {
@@ -263,8 +263,7 @@ const CreateNews = () => {
                           );
                         })}
                       </div>
-                      <small className="text-muted d-block mt-1">Chọn ít nhất 1 thẻ để phân loại tin trực tiếp.</small>
-                    </div>
+                    </div> */}
 
                     {/* Submit Button */}
                     <div className="d-grid mt-2">

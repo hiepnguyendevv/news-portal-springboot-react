@@ -118,3 +118,10 @@
   padding: 0;
   border-radius: 0.25rem;
 }
+
+.news-content img,
+.news-content video {
+    max-width: 100%; /* Quan trọng nhất: Không bao giờ rộng hơn cha */
+    height: auto;    /* Giữ đúng tỷ lệ khung hình */
+    object-fit: cover; /* Hiển thị đẹp hơn nếu ảnh bị co dãn */
+}

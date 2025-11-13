@@ -37,6 +37,7 @@ import LiveNews from './pages/LiveNews';
 import LiveNewsCreate from './pages/admin/LiveNewsCreate';
 import LiveNewsDashboard from './pages/admin/LiveNewsDashboard';
 import WebSocketTest from './pages/WebSocketTest';
+import NotFound from './pages/NotFound';
 function App() {
   return (
     <AuthProvider>
@@ -48,7 +49,6 @@ function App() {
           {/* <Route path="/live/:newsId" element={<LiveNews />} /> */}
             <Route path="/websocket-test" element={<WebSocketTest />} />
             <Route path="/" element={<Home />} />
-            <Route path="/:slugWithId" element={<NewsDetail />} />
             <Route path="/category/:category" element={<Category />} />
             <Route path="/search" element={<Search />} />
 
@@ -183,6 +183,12 @@ function App() {
                 <EditCategory />
               </AdminRoute>
             } />
+            
+            {/* Route cho bài viết chi tiết */}
+            <Route path="/:slugWithId" element={<NewsDetail />} />
+            
+            {/* Catch-all route - phải đặt cuối cùng để bắt các URL không khớp */}
+            <Route path="*" element={<NotFound />} />
             
           </Routes>
         </main>

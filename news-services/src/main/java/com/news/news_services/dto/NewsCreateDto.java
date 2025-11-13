@@ -6,12 +6,12 @@ public class NewsCreateDto {
     private String title;
     private String summary;
     private String content;
-    private Long categoryId; // Use Long for ID
-    private Boolean published; // Use Boolean objects
+    private Long categoryId;
+    private Boolean published;
     private Boolean featured;
     private Boolean isRealtime;
     private List<String> tags;
-    private List<Long> mediaIds; // THÊM TRƯỜNG NÀY
+    private List<Long> mediaIds;
 
 
     public NewsCreateDto() {

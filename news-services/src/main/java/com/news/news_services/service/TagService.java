@@ -66,6 +66,7 @@ public class TagService {
                 NewsTag newsTag = new NewsTag();
                 newsTag.setNews(news);
                 newsTag.setTag(tag);
+                newsTag.setCreatedAt(Instant.now());
                 newsTagRepository.save(newsTag);
             }
         }

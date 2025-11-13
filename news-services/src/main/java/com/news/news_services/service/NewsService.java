@@ -22,6 +22,7 @@ import org.jsoup.safety.Safelist;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.time.Instant;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -69,7 +70,6 @@ public class NewsService {
 
     @Autowired
     private TagGenerationService tagGenerationService;
-
 
     public List<News> getAllNews() {
         return newsRepository.findAll();
@@ -207,6 +207,7 @@ public class NewsService {
             NewsTag newsTag = new NewsTag();
             newsTag.setNews(news);
             newsTag.setTag(tag);
+            newsTag.setCreatedAt(Instant.now());
             return newsTag;
         }).collect(Collectors.toSet()));
         return news;
@@ -285,7 +286,6 @@ public class NewsService {
         // 6. Lưu Entity vào DB (để lấy ID)
         News savedNews = newsRepository.save(newsEntity);
 
-        // BÂY GIỜ CHÚNG TA TỰ ĐỘNG TẠO TAGS
         List<String> tagNames = tagGenerationService.generateTagsFromContent(
                 newsDto.getTitle(),
                 newsDto.getContent() // Lấy nội dung gốc trước khi Jsoup clean
@@ -294,28 +294,24 @@ public class NewsService {
             tagService.assignToNews(savedNews.getId(), tagNames);
         }
 
-        // 7. Liên kết media với news (nếu có)
         List<Long> mediaIds = newsDto.getMediaIds();
         if (mediaIds != null && !mediaIds.isEmpty()) {
-            // Tìm các media "mồ côi" của user hiện tại
             List<Media> orphanMedia = mediaRepository.findByIdsAndUploaderAndNewsIsNull(
                     mediaIds, 
                     userPrincipal.getId()
             );
             
-            // Liên kết từng media với news
             for (Media media : orphanMedia) {
                 media.setNews(savedNews);
             }
             
-            // Lưu tất cả media đã được liên kết
             if (!orphanMedia.isEmpty()) {
                 mediaRepository.saveAll(orphanMedia);
                 logger.info("Linked {} media items to news ID {}", orphanMedia.size(), savedNews.getId());
             }
         }
 
-        return savedNews; // Return the saved Entity
+        return savedNews; 
     }
 
         @Transactional
@@ -359,10 +355,25 @@ public class NewsService {
 
 
             News updatedNews = newsRepository.save(news);
-            List<String> tagNames = newsDto.getTags();
-            if (tagNames != null && !tagNames.isEmpty()) {
-                tagService.assignToNews(id, tagNames);
+            // Liên kết media mới tải lên với bài viết (nếu có gửi kèm mediaIds)
+            List<Long> mediaIds = newsDto.getMediaIds();
+            if (mediaIds != null && !mediaIds.isEmpty()) {
+                List<Media> orphanMedia = mediaRepository.findByIdsAndUploaderAndNewsIsNull(
+                        mediaIds,
+                        userPrincipal.getId()
+                );
+                for (Media media : orphanMedia) {
+                    media.setNews(updatedNews);
+                }
+                if (!orphanMedia.isEmpty()) {
+                    mediaRepository.saveAll(orphanMedia);
+                    logger.info("Linked {} media items to news ID {} on update", orphanMedia.size(), updatedNews.getId());
+                }
             }
+//            List<String> tagNames = newsDto.getTags();
+//            if (tagNames != null && !tagNames.isEmpty()) {
+//                tagService.assignToNews(id, tagNames);
+//            }
 
             return updatedNews;
         }
@@ -386,7 +397,7 @@ public class NewsService {
             throw new RuntimeException("Bạn không có quyền xóa tin tức này");
         }
 
-
+        mediaRepository.deleteByNewsId(id);
         try {
             String imageUrl = news.getImageUrl();
             String publicId = extractPublicIdFromUrl(imageUrl);

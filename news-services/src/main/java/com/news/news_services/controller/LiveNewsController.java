@@ -52,11 +52,26 @@
         }
     
         @MessageMapping("/live/{newsId}/addEntry")
-        public void addEntry(@DestinationVariable Long newsId, LiveNewsEvent dto,Authentication auth) {
-
-
+        public void addEntry(@DestinationVariable Long newsId, LiveNewsEvent dto) {
             try {
-                Long userId = ((UserPrincipal)auth.getPrincipal()).getId();
+                Long userId = null;
+                
+                // Ưu tiên lấy userId từ payload
+                if (dto.getUserId() != null) {
+                    userId = dto.getUserId();
+                } else {
+                    // Nếu không có trong payload, thử lấy từ authentication
+                    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                    if (auth != null && auth.getPrincipal() != null) {
+                        userId = ((UserPrincipal)auth.getPrincipal()).getId();
+                    }
+                }
+                
+                if (userId == null) {
+                    System.err.println("Error: Cannot get userId from payload or authentication");
+                    return;
+                }
+                
                 liveContentService.addContent(newsId, userId, dto);
                 System.out.println("successfully processed message");
             } catch (Exception e) {

@@ -1,103 +1,98 @@
 package com.news.news_services.service;
 
-import com.news.news_services.dto.OpenAiChatRequest;
-import com.news.news_services.dto.OpenAiChatResponse;
-import com.news.news_services.dto.OpenAiMessage;
-
 import org.jsoup.Jsoup;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
 public class TagGenerationService {
 
-    @Value("${openai.api.key}")
-    private String openAiApiKey; // 1. Lấy API Key từ properties
+    private static final int MAX_TAGS = 3;
 
-    private static final String OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
-    private final RestTemplate restTemplate;
 
-    public TagGenerationService() {
-        this.restTemplate = new RestTemplate();
-    }
+    private static final double NGRAM_WEIGHT_POWER = 1.5;
 
-    /**
-     * Trích xuất tags từ title và content (Phương án C: OpenAI)
-     */
     public List<String> generateTagsFromContent(String title, String contentHtml) {
 
-        // 1. Làm sạch HTML
         String cleanContent = Jsoup.parse(contentHtml).text();
-        // Giới hạn độ dài nội dung để tiết kiệm chi phí
-        if (cleanContent.length() > 1000) {
-            cleanContent = cleanContent.substring(0, 1000);
+        String titleBoost = (title + " ").repeat(4);
+        String fullText = (titleBoost + cleanContent).toLowerCase();
+
+        String normalizedText = fullText.replaceAll("[^a-z0-9àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ\\s]", "");
+
+        List<String> validWords = Arrays.stream(normalizedText.split("\\s+"))
+                .filter(word -> word.length() > 2 && !VietnameseStopWords.STOP_WORDS.contains(word))
+                .collect(Collectors.toList());
+
+
+        List<String> allTerms = new ArrayList<>(validWords); // 1-grams
+        for (int i = 0; i < validWords.size() - 1; i++) {
+            allTerms.add(validWords.get(i) + " " + validWords.get(i + 1)); // 2-grams
+        }
+        for (int i = 0; i < validWords.size() - 2; i++) {
+            allTerms.add(validWords.get(i) + " " + validWords.get(i + 1) + " " + validWords.get(i + 2)); // 3-grams
         }
 
-        // 2. Tạo câu "prompt"
-        String prompt = String.format(
-                "Phân tích tiêu đề và nội dung bài báo sau đây. Trích xuất 5 từ khóa (tags) quan trọng nhất." +
-                        "Chỉ trả về 5 từ khóa đó, cách nhau bằng dấu phẩy (,), không giải thích gì thêm.\n" +
-                        "Tiêu đề: %s\n" +
-                        "Nội dung: %s",
-                title, cleanContent
-        );
+        // Đếm tần suất
+        Map<String, Long> termCounts = allTerms.stream()
+                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
 
-        // 3. Chuẩn bị request
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(openAiApiKey); // Đặt Authorization header
+        Map<String, Double> termScores = new HashMap<>();
+        for (Map.Entry<String, Long> entry : termCounts.entrySet()) {
+            String term = entry.getKey();
+            long frequency = entry.getValue();
+            int wordCount = term.split("\\s+").length; // Số lượng từ trong cụm (1, 2, hoặc 3)
 
-        // Sử dụng DTOs đã tạo
-        List<OpenAiMessage> messages = List.of(new OpenAiMessage("user", prompt));
-        OpenAiChatRequest requestBody = new OpenAiChatRequest(
-                "gpt-4o-mini", // (hoặc "gpt-4o-mini" để nhanh và rẻ hơn)
-                messages,
-                5 // Giới hạn token trả về
-        );
 
-        HttpEntity<OpenAiChatRequest> entity = new HttpEntity<>(requestBody, headers);
-
-        try {
-            // 4. Gọi API
-            OpenAiChatResponse response = restTemplate.postForObject(
-                    OPENAI_API_URL,
-                    entity,
-                    OpenAiChatResponse.class
-            );
-
-            // 5. Xử lý kết quả
-            if (response != null && response.getChoices() != null && !response.getChoices().isEmpty()) {
-                String rawResult = response.getChoices().get(0).getMessage().getContent();
-                return parseTags(rawResult);
-            }
-
-        } catch (Exception e) {
-            System.err.println("Lỗi khi gọi API OpenAI: " + e.getMessage());
+            double score = (double) frequency * Math.pow(wordCount, NGRAM_WEIGHT_POWER);
+            termScores.put(term, score);
         }
 
-        return Collections.emptyList(); // Trả về rỗng nếu có lỗi
+        List<String> sortedTopTags = termScores.entrySet().stream()
+                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+                .map(Map.Entry::getKey)
+                .limit(MAX_TAGS * 3)
+                .collect(Collectors.toList());
+
+
+        List<String> finalTags = filterRedundantTags(sortedTopTags);
+
+        return finalTags.stream().limit(MAX_TAGS).collect(Collectors.toList());
     }
 
-    /**
-     * Xử lý chuỗi trả về từ AI (ví dụ: "Thành phố Hồ Chí Minh, Thể thao, Kinh tế")
-     */
-    private List<String> parseTags(String rawResult) {
-        if (rawResult == null || rawResult.isEmpty()) {
-            return Collections.emptyList();
+
+    private List<String> filterRedundantTags(List<String> sortedTopTags) {
+        List<String> finalTags = new ArrayList<>();
+
+        for (String currentTag : sortedTopTags) {
+            boolean isRedundant = false;
+
+            for (String existingTag : finalTags) {
+
+                if ((" " + existingTag + " ").contains(" " + currentTag + " ")) {
+                    isRedundant = true;
+                    break;
+                }
+            }
+
+            if (!isRedundant) {
+                finalTags.add(currentTag);
+            }
         }
 
-        return Arrays.stream(rawResult.split(",")) // Tách bằng dấu phẩy
-                .map(String::trim)                 // Xóa khoảng trắng
-                .filter(tag -> !tag.isEmpty())     // Lọc bỏ tag rỗng
-                .collect(Collectors.toList());
+
+        List<String> cleanedList = new ArrayList<>(finalTags);
+        for(String tagA : finalTags){
+            for(String tagB : finalTags){
+                if(!tagA.equals(tagB) && (" " + tagA + " ").contains(" " + tagB + " ")){
+                    cleanedList.remove(tagB);
+                }
+            }
+        }
+
+        return cleanedList;
     }
 }

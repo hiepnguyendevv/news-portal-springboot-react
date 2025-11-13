@@ -1,0 +1,213 @@
+TỔNG QUAN
+- Chức năng "live news" cho phép biên tập viên tạo bài viết kiểu tường thuật trực tiếp, gửi các entry nội dung theo thời gian thực và phân phối tới người đọc thông qua WebSocket.
+- Backend sử dụng Spring Boot, Redis pub/sub, Cloudinary và STOMP over SockJS để lưu trữ, phát tán và đồng bộ trạng thái.
+- Frontend (React) cung cấp trang quản trị để tạo bài live, nhập entry, chỉnh sửa hoặc xoá với giao diện WYSIWYG và theo dõi luồng cập nhật tức thời.
+
+BACKEND
+`LiveContent` entity (`news-services/src/main/java/com/news/news_services/entity/LiveContent.java`)
+- Thuộc tính chính: `id`, `news`, `user`, `content` (TEXT), `entryStatus`, `contentType`, `mediaUrl`, `sortOrder`, `createdAt`, `updatedAt`.
+- Enum `ContentType` (`TEXT`, `IMAGE`, `VIDEO_EMBED`) và `EntryStatus` (`PUBLISHED`, `PINNED`, `CORRECTION`).
+- Tự động set `createdAt`, `updatedAt` tại constructor; setter cập nhật lại khi service thao tác.
+
+`LiveContentRepository`
+- `Page<LiveContent> findByNewsIdOrderByCreatedAtDesc(Long newsId, Pageable pageable)` dùng trong REST load initial data.
+- `List<LiveContent> findByNewsIdOrderByCreatedAtDesc(Long newsId)` có thể dùng cho export full hoặc push notification.
+- API phụ: đếm số lượng, tìm theo trạng thái, xoá by id.
+
+`LiveNewsEvent` DTO
+- Giữ `action` (phân loại ADD/UPDATE/REMOVE), metadata `id`, `newsId`, `userId`, nội dung, kiểu, trạng thái, `mediaUrl`, `sortOrder`, timestamps.
+- DTO này được serialize/deserialise cả trong REST, WebSocket và Redis pub/sub.
+
+`LiveNewsController` (`/api/live-content`)
+- `GET /news/{newsId}` → `Page<LiveNewsEvent>`: sử dụng `PageRequest` với tham số `page` & `size` (default 0/20). Response JSON tuân theo cấu trúc Spring Data (`content`, `totalElements`, `totalPages`, ...).
+- `@MessageMapping("/live/{newsId}/addEntry")`: nhận payload JSON, xác định `userId`:
+  - Nếu payload đã có `userId` → dùng trực tiếp (client admin gửi kèm).
+  - Ngược lại truy xuất từ `SecurityContextHolder` (được WebSocket handshake inject khi header có Bearer token).
+  - Gọi `liveContentService.addContent(newsId, userId, dto)`.
+- `@MessageMapping("/live/{newsId}/updateEntry")`: yêu cầu payload có `id`; gửi thẳng tới service.
+- `@MessageMapping("/live/{newsId}/deleteEntry")`: cần `dto.id`, sau đó service `removeContent(newsId, dto.getId())`.
+
+`LiveContentService`
+- Hằng `LIVE_NEWS_CHANNEL = "live-news-event"` dùng đồng bộ Redis.
+- `getLivedContent(newsId, pageable)`:
+  1. Truy vấn repo.
+  2. Map từng entity thành DTO bằng `convertToLiveEvent`.
+- `addContent(newsId, userId, dto)`:
+  1. Load `News` & `User` bằng repository (throw `NoSuchElementException` nếu không tồn tại).
+  2. Dùng `Jsoup.clean(rawHtml, Safelist.basicWithImages())` → ngăn XSS nhưng giữ tag ảnh.
+  3. Map DTO vào entity (`contentType`, `entryStatus`, `mediaUrl`, `sortOrder`, timestamp).
+  4. Lưu DB.
+  5. Tạo `LiveNewsEvent` với action `ADD_ENTRY`, timestamp hiện tại, push Redis `convertAndSend`.
+  6. Trả `LiveContent` đã lưu (caller không dùng trả về qua WebSocket nhưng có thể log/test).
+- `updateContent(liveContentId, dto)`:
+  1. Load entry, ném lỗi nếu không có.
+  2. Nếu entry có `mediaUrl`, xác định `resource_type` (`image`/`video`/`raw`) dựa vào chuỗi Cloudinary, gọi `cloudinary.uploader().destroy(publicId, ...)`.
+  3. Làm sạch HTML, cập nhật field, set `updatedAt = now`.
+  4. Lưu repo.
+  5. Tạo `LiveNewsEvent` (action `UPDATE_ENTRY`, kèm `createdAt`, `updatedAt`).
+  6. Publish Redis.
+- `removeContent(newsId, liveContentId)`:
+  1. Load entry, kiểm tra `newsId` khớp (ngăn xóa chéo).
+  2. Xoá media trên Cloudinary nếu có.
+  3. `liveContentRepository.delete(liveContent)`.
+  4. Publish `LiveNewsEvent` với action `REMOVE_ENTRY`.
+- `convertToLiveEvent` tái sử dụng ở REST.
+- `extractPublicIdFromUrl` regex `/upload/(?:v\\d+/)?([^.]+?)(\\.\\w+)?$` để lấy `public_id` Cloudinary.
+
+`RedisConfig` & `RedisMessageSubscriber`
+- `RedisTemplate` sử dụng `GenericJackson2JsonRedisSerializer` + `JavaTimeModule` để giữ `LocalDateTime`.
+- Listener container đăng ký topic `live-news-event`.
+- `RedisMessageSubscriber.onMessage`:
+  1. Deserialize body → `LiveNewsEvent`.
+  2. Xác định destination `/topic/live/{event.newsId}`.
+  3. `simpMessagingTemplate.convertAndSend(destination, event)` → broadcast tới WebSocket subscribers.
+  4. Log lỗi khi deserialize thất bại (in stacktrace).
+
+`WebSocketConfig`
+- Enable STOMP broker: client subscribe `/topic/**`, gửi message tới `/app/**`.
+- Endpoint `/ws` hỗ trợ SockJS, danh sách `allowedOrigins` bao gồm localhost và domain production.
+- `WebSocketAuthInterceptor` được inject nhưng hiện comment ở `configureClientInboundChannel`; nếu bật lại, interceptor sẽ đọc header Authorization để xác thực STOMP frame.
+
+Các file bổ trợ khác
+- `LiveContent` map tới `News` & `User` (quan hệ `ManyToOne`). Mẫu `UserPrincipal` (security) trả `id` dùng khi controller lấy từ `SecurityContext`.
+- `newsAPI.deleteLiveEntry` (REST) tồn tại nhưng hiện dashboard không sử dụng; backend có `LiveContentService.removeContent` REST? (Không có controller REST xóa, chỉ WebSocket).
+
+FRONTEND
+`LiveNewsCreate` (`news-frontend/src/pages/admin/LiveNewsCreate.js`)
+- Form state `formData`: có `isRealtime: true` (cờ cho backend), `published` & `featured` default `true`.
+- Fetch categories/tags qua `newsAPI`. Thẻ tags toggle (đang comment).
+- `handleFileChange` đảm bảo MIME là `image/*`.
+- `handleSubmit`:
+  1. Validate bắt buộc: `title`, `categoryId`, `imageFile`.
+  2. `FormData`: `image` file + `news` JSON string của `formData`.
+  3. `newsAPI.createNews(formDataToSend)` → API `/admin/news`.
+  4. Reset state, điều hướng tới `/admin/live-news/{newId}`.
+
+`LiveNewsDashboard` (`/admin/live-news/:newsId`)
+- State: danh sách entry, trạng thái kết nối WebSocket, modal edit/delete.
+- `useEffect` (WebSocket):
+  - Đợi auth xong (`authLoading`) và có `newsId`.
+  - Tạo SockJS `/ws`, STOMP `Client`:
+    * `webSocketFactory`: gói `SockJS`.
+    * `connectHeaders`: nếu có access token, gắn `Authorization: Bearer <token>`.
+    * `reconnectDelay = 5000` cho auto reconnect.
+  - `onConnect`: set `isConnected = true`, subscribe `/topic/live/{newsId}`.
+  - Khi nhận frame: parse JSON → `eventData`. Switch theo `eventData.action`:
+    * `ADD_ENTRY`: prepend event vào `entries`.
+    * `UPDATE_ENTRY`: map replace by `id`.
+    * `REMOVE_ENTRY`: filter bỏ entry có `id`.
+  - `onStompError`/`onWebSocketClose`: log và set `isConnected = false`.
+  - Cleanup: deactivate client khi unmount.
+- `useEffect` (initial REST load):
+  - Fetch `/api/live-content/news/{newsId}?page=0&size=20`.
+  - Parse JSON, set `entries = data.content`.
+- `sendEntry(payload)`:
+  - Kiểm tra client active.
+  - Merge `userId` từ `AuthContext` (đảm bảo backend ghi nhận user).
+  - `client.publish({ destination: /app/live/${newsId}/addEntry, body: JSON.stringify(payloadWithUserId) })`.
+- `onSaveEdit(updatedEntry)`:
+  - Dựng payload `UPDATE_ENTRY` (chỉ id, content, entryStatus, mediaUrl, sortOrder).
+  - Publish tới `/app/live/${newsId}/updateEntry`.
+- `handleConfirmDelete`:
+  - Publish payload `{ action: 'REMOVE_ENTRY', id }` tới `/app/live/${newsId}/deleteEntry`.
+
+`EntryForm`
+- TinyMCE Editor (`@tinymce/tinymce-react`) id `entry-content-editor`.
+- Cho phép upload ảnh/video: `newsAPI.uploadMedia(file)` POST `/media/upload` → trả `url`.
+- Payload khi submit:
+  ```
+  {
+    action: 'ADD_ENTRY',
+    content: <HTML from TinyMCE>,
+    contentType: 'TEXT',            // có thể mở rộng trong tương lai
+    entryStatus: pin ? 'PINNED' : 'PUBLISHED',
+    mediaUrl: finalUrl,
+    sortOrder: <Number| null>
+  }
+  ```
+- Sau khi gửi: reset editor, gọi `removeFile()`, `setPin(false)`, `setSortOrder('')`.
+- `handleEnterPress` cho phép gửi bằng Enter (hiện chưa gắn vào DOM?).
+
+`EntryList` & `EntryItem`
+- Render mỗi entry trong `card`.
+- `EntryItem`:
+  - Hiển thị `createdAt` dạng địa phương `vi-VN`.
+  - `dangerouslySetInnerHTML` với content => phù hợp vì backend đã sanitize.
+  - Media: check extension `.mp4|.webm|.ogg|.mov` hoặc URL chứa `/video/` (Cloudinary) → render `<video>`; ngược lại `<img>`.
+  - Buttons: `Sửa` (call `onEdit`), `Xóa` (call `onDelete`).
+
+`EditEntryModal`
+- TinyMCE editor cho chỉnh sửa.
+- Cho phép upload lại media (ảnh/video). Nếu đổi media → upload trước, lấy URL mới.
+- `handleSave`:
+  1. Kiểm tra text hoặc media tồn tại.
+  2. Nếu `mediaFile` mới → `newsAPI.uploadMedia`.
+  3. Build `updatedEntry` = entry cũ + content/mediaUrl mới.
+  4. `onSave(updatedEntry)` → Dashboard publish WS.
+  5. Đóng modal.
+- `removeMedia` đặt `mediaUrl = ''` và `mediaFile = null`.
+- Disable nút lưu khi `!isConnected || uploading`.
+
+`ConfirmModal` (được tái dùng) hiển thị dialog xoá; `LiveNewsDashboard` truyền `handleConfirmDelete`.
+
+`api.js`
+- Access token lưu trong memory, dùng cho cả REST và WebSocket.
+- `newsAPI.uploadMedia` & `uploadNewsMedia` phục vụ TinyMCE.
+- `newsAPI.deleteLiveEntry` (REST) chưa dùng trong dashboard.
+- Interceptor xử lý refresh token, dispatch event `auth-failed` nếu refresh lỗi.
+
+Luồng WebSocket + Redis + REST (chi tiết logic)
+1. Client admin mở `LiveNewsDashboard`:
+   - Fetch REST `GET /api/live-content/news/{newsId}` → trang đầu entry (phân trang 20 item).
+   - Thiết lập STOMP connection `/ws`, subscribe `/topic/live/{newsId}`.
+2. Khi client tạo entry từ `EntryForm`:
+   - Upload media (nếu có) → Cloudinary → lấy `url`.
+   - Publish STOMP `ADD_ENTRY` (kèm `userId`).
+   - Backend Controller nhận → `LiveContentService.addContent`.
+   - Service lưu DB, phát `LiveNewsEvent` (ADD) lên Redis.
+   - `RedisMessageSubscriber` nhận → forward `/topic/live/{newsId}`.
+   - Client (bao gồm chính người gửi và các client khác) nhận event → prepend entry vào UI (có timestamp).
+3. Khi chỉnh sửa entry:
+   - Client mở `EditEntryModal`, cập nhật content/media, publish `UPDATE_ENTRY`.
+   - Service xoá media cũ khỏi Cloudinary, lưu DB, publish event (UPDATE).
+   - Client đồng bộ state qua reducer `map`.
+4. Khi xoá entry:
+   - Publish `REMOVE_ENTRY`.
+   - Service kiểm tra `newsId`, xoá media + DB, publish event (REMOVE).
+   - Client filter bỏ entry khỏi danh sách.
+
+Kiểm tra bảo mật & xử lý lỗi
+- Controller log lỗi ra console (chưa trả feedback tới client do sử dụng STOMP fire-and-forget).
+- `deleteEntry`: nếu payload thiếu `id`, in lỗi và return (không ném exception).
+- `addEntry`: nếu không xác định được `userId` (payload và security đều null) → log và bỏ qua.
+- Service `addContent`/`updateContent`/`removeContent` sử dụng `orElseThrow` → ném runtime exception nếu dữ liệu không hợp lệ. Redis publish nằm sau DB save nên không phát khi lỗi.
+- Cloudinary destroy gọi trong `try`/`catch`; nếu thất bại, wrap thành Runtime.
+- WebSocket configurator chưa bật interceptor → nếu cần auth STOMP inbound, mở `configureClientInboundChannel`.
+
+Gợi ý thử nghiệm
+- REST: gọi `GET /api/live-content/news/{newsId}?page=0&size=10` để kiểm tra mapping DTO.
+- STOMP: dùng Postman/Newman websocket (hoặc `wscat`) connect `ws://<host>/ws/websocket`, subscribe `/topic/live/{newsId}`, gửi JSON tới `/app/live/{newsId}/addEntry`.
+- Redis: kiểm tra kênh `live-news-event` bằng `redis-cli SUBSCRIBE live-news-event`.
+- Cloudinary: xác minh `mediaUrl` trả về (có dạng `https://res.cloudinary.com/.../image/upload/...`).
+
+DANH SÁCH FILE LIÊN QUAN
+- Backend:
+  * `news-services/src/main/java/com/news/news_services/controller/LiveNewsController.java`
+  * `news-services/src/main/java/com/news/news_services/service/LiveContentService.java`
+  * `news-services/src/main/java/com/news/news_services/dto/LiveNewsEvent.java`
+  * `news-services/src/main/java/com/news/news_services/entity/LiveContent.java`
+  * `news-services/src/main/java/com/news/news_services/repository/LiveContentRepository.java`
+  * `news-services/src/main/java/com/news/news_services/listener/RedisMessageSubscriber.java`
+  * `news-services/src/main/java/com/news/news_services/config/RedisConfig.java`
+  * `news-services/src/main/java/com/news/news_services/config/WebSocketConfig.java`
+  * (Có thể tham khảo thêm `WebSocketAuthInterceptor`, `UserPrincipal`, `SecurityConfig` nếu cần xác thực).
+- Frontend:
+  * `news-frontend/src/pages/admin/LiveNewsCreate.js`
+  * `news-frontend/src/pages/admin/LiveNewsDashboard.js`
+  * `news-frontend/src/components/live-news/EntryForm.js`
+  * `news-frontend/src/components/live-news/EntryList.js`
+  * `news-frontend/src/components/live-news/EntryItem.js`
+  * `news-frontend/src/components/live-news/EditEntryModal.js`
+  * `news-frontend/src/components/ConfirmModal.js` (tái sử dụng xoá).
+  * `news-frontend/src/services/api.js` (upload media, token, create news).
+

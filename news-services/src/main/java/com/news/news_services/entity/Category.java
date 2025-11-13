@@ -8,9 +8,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.UUID;
 
-import com.news.news_services.service.HelperService;
 
 @Entity
 @Table(name = "categories")

@@ -25,17 +25,6 @@ public class NewsTag {
     @Column(name = "created_at")
     private Instant createdAt;
 
-    @Column(name = "update_at")
-    private Instant updateAt;
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
     public Long getId() {
         return id;
     }
@@ -60,11 +49,11 @@ public class NewsTag {
         this.tag = tag;
     }
 
-    public Instant getUpdateAt() {
-        return updateAt;
+    public Instant getCreatedAt() {
+        return createdAt;
     }
 
-    public void setUpdateAt(Instant updateAt) {
-        this.updateAt = updateAt;
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
     }
 }

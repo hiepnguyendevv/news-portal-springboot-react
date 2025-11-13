@@ -129,9 +129,17 @@ const NewsManagement = () => {
   const handleTogglePublish = async (newsId, currentStatus) => {
     try {
       await newsAPI.updateNewsStatus(newsId, { published: !currentStatus });
-      setNews(news.map(item => 
-        item.id === newsId ? { ...item, published: !currentStatus } : item
-      ));
+      const newPublished = !currentStatus;
+      setNews(prevNews => prevNews.map(item => {
+        if (item.id === newsId) {
+          return { 
+            ...item, 
+            published: newPublished,
+            status: newPublished ? 'PUBLISHED' : 'DRAFT'
+          };
+        }
+        return item;
+      }));
       toast.success(`${!currentStatus ? 'Xuất bản' : 'Hủy xuất bản'} thành công`);
     } catch (err) {
       toast.error('Lỗi khi cập nhật trạng thái');
@@ -141,7 +149,7 @@ const NewsManagement = () => {
   const handleToggleFeatured = async (newsId, currentStatus) => {
     try {
       await newsAPI.updateNewsStatus(newsId, { featured: !currentStatus });
-      setNews(news.map(item => 
+      setNews(prevNews => prevNews.map(item => 
         item.id === newsId ? { ...item, featured: !currentStatus } : item
       ));
       toast.success(`${!currentStatus ? 'Đặt' : 'Bỏ'} tin nổi bật thành công`);

@@ -1,3 +1,106 @@
+// File: news-services/src/main/java/com/news/news_services/controller/LiveNewsController.java
+package com.news.news_services.controller;
+
+import com.news.news_services.dto.LiveNewsEvent;
+import com.news.news_services.entity.LiveContent;
+import com.news.news_services.security.UserPrincipal;
+import com.news.news_services.service.LiveContentService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;    
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.handler.annotation.DestinationVariable;
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/live-content")
+public class LiveNewsController {
+    @Autowired
+    LiveContentService liveContentService;
+
+    @GetMapping("/news/{newsId}")
+    public ResponseEntity<Page<LiveNewsEvent>> getLiveContent(@PathVariable Long newsId,
+                                                @RequestParam(defaultValue = "0")int page,
+                                                @RequestParam(defaultValue = "20")int size){
+        Pageable pageable = PageRequest.of(page,size);
+        Page<LiveNewsEvent> result = liveContentService.getLivedContent(newsId,pageable);
+
+        return ResponseEntity.ok(result);
+    }
+
+    @MessageMapping("/live/{newsId}/deleteEntry")
+    public void deleteEntry(@DestinationVariable Long newsId, LiveNewsEvent dto ) {
+ 
+
+        try {
+            if (dto.getId() == null) {
+                System.err.println("[DEBUG] LỖI: dto.getId() bị null!");
+                return;
+            }
+            liveContentService.removeContent(newsId, dto.getId());
+
+        } catch (Exception e) {
+            System.err.println("Lỗi khi xử lý REMOVE_ENTRY: " + e.getMessage());
+            e.printStackTrace(); 
+        }
+    }
+
+    @MessageMapping("/live/{newsId}/addEntry")
+    public void addEntry(@DestinationVariable Long newsId, LiveNewsEvent dto) {
+        try {
+            Long userId = null;
+            
+            // Ưu tiên lấy userId từ payload
+            if (dto.getUserId() != null) {
+                userId = dto.getUserId();
+            } else {
+                // Nếu không có trong payload, thử lấy từ authentication
+                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                if (auth != null && auth.getPrincipal() != null) {
+                    userId = ((UserPrincipal)auth.getPrincipal()).getId();
+                }
+            }
+            
+            if (userId == null) {
+                System.err.println("Error: Cannot get userId from payload or authentication");
+                return;
+            }
+            
+            liveContentService.addContent(newsId, userId, dto);
+            System.out.println("successfully processed message");
+        } catch (Exception e) {
+            System.err.println("Error processing message: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+    }
+
+    @MessageMapping("/live/{newsId}/updateEntry")
+    public void updateEntry(@DestinationVariable Long newsId, LiveNewsEvent dto) {
+        Long liveContentId = dto.getId();
+
+        try {
+
+            liveContentService.updateContent(liveContentId, dto);
+
+            System.out.println("Successfully update message");
+        } catch (Exception e) {
+            System.err.println("Error processing message: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+
+}
+
+// File: news-services/src/main/java/com/news/news_services/service/LiveContentService.java
 package com.news.news_services.service;
 
 import com.cloudinary.Cloudinary;
@@ -180,39 +283,6 @@ public class LiveContentService {
         }
         liveContentRepository.delete(liveContent);
 
-        LiveNewsEvent event = new LiveNewsEvent();
-        event.setAction("REMOVE_ENTRY");
-        event.setId(liveContentId);
-        event.setNewsId(newsId);
-
-        redisTemplate.convertAndSend(LIVE_NEWS_CHANNEL, event);
-    }
-
-    public LiveNewsEvent convertToLiveEvent(LiveContent liveContent){
-        LiveNewsEvent newsEvent = new LiveNewsEvent();
-        newsEvent.setId(liveContent.getId());
-        newsEvent.setNewsId(liveContent.getNews().getId());
-        newsEvent.setUserId(liveContent.getUser().getId());
-        newsEvent.setContent(liveContent.getContent());
-        newsEvent.setContentType(liveContent.getContentType().name());
-        newsEvent.setEntryStatus(liveContent.getEntryStatus().name());
-        newsEvent.setMediaUrl(liveContent.getMediaUrl());
-        newsEvent.setSortOrder(liveContent.getSortOrder());
-        newsEvent.setCreatedAt(liveContent.getCreatedAt());
-        return newsEvent;
-    }
-
-    private String extractPublicIdFromUrl(String imageUrl) {
-        Pattern pattern = Pattern.compile("/upload/(?:v\\d+/)?([^.]+?)(\\.\\w+)?$");
-        Matcher matcher = pattern.matcher(imageUrl);
-        if (matcher.find()) {
-            return matcher.group(1);
-        }
-        return null;
-    }
-
-
-
-}
+    />
 
 

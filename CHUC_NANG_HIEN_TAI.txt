@@ -1,0 +1,88 @@
+========================================
+DANH SÁCH CHỨC NĂNG HIỆN TẠI
+========================================
+
+1. AUTHENTICATION & AUTHORIZATION
+   - Đăng ký tài khoản
+   - Đăng nhập (Username/Password)
+   - Đăng nhập Google (OAuth2)
+   - Refresh Token tự động
+   - Đăng xuất
+   - Xem/Cập nhật profile
+
+2. QUẢN LÝ TIN TỨC
+   - Xem danh sách tin (phân trang)
+   - Xem chi tiết tin
+   - Tìm kiếm tin
+   - Lọc theo category
+   - Sắp xếp theo lượt xem
+   - Đếm lượt xem
+   - User: Tạo/Sửa/Xóa/Gửi duyệt tin
+   - Admin: Duyệt/Từ chối/Quản lý tin
+   - Xóa/Duyệt hàng loạt
+
+3. LIVE NEWS (REAL-TIME)
+   - Tạo Live News
+   - Thêm/Cập nhật/Xóa entries
+   - Real-time updates qua WebSocket
+   - Upload media cho entries
+
+4. COMMENTS
+   - Xem comments (nhiều cấp)
+   - Thêm/Xóa comment
+   - Like/Unlike comment
+   - Reply comment
+   - Admin: Quản lý, tìm kiếm, xóa/khôi phục
+
+5. BOOKMARKS
+   - Lưu/Bỏ lưu bài viết
+   - Xem danh sách đã lưu
+
+6. CATEGORIES
+   - Xem categories (hierarchical)
+   - Admin: Tạo/Sửa/Xóa category
+   - Xóa hàng loạt
+
+7. TAGS
+   - Auto-generate tags từ nội dung
+   - Xem tất cả tags
+
+8. NOTIFICATIONS
+   - Xem thông báo
+   - Đếm chưa đọc
+   - Đánh dấu đã đọc
+
+9. USER MANAGEMENT (ADMIN)
+   - Xem/Tạo/Sửa/Xóa user
+   - Cập nhật status (ACTIVE/INACTIVE)
+   - Xóa/Cập nhật hàng loạt
+
+10. MEDIA
+    - Upload ảnh/video
+    - Tích hợp Cloudinary
+
+11. SECURITY
+    - JWT Authentication
+    - Refresh Token (HttpOnly cookie)
+    - Token rotation
+    - Role-based access (USER/ADMIN)
+    - Password BCrypt encryption
+
+12. FRONTEND
+    - Responsive UI
+    - Protected routes
+    - Admin routes
+    - Toast notifications
+    - Pagination
+    - Loading states
+
+========================================
+TỔNG KẾT
+========================================
+- API Endpoints: ~60+
+- Controllers: 14
+- Frontend Pages: 20+
+- Database: MySQL + Redis
+- Real-time: WebSocket + Redis Pub/Sub
+
+

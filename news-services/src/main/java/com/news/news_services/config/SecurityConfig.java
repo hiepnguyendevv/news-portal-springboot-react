@@ -91,9 +91,9 @@ public class SecurityConfig {
         
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
-//                .exceptionHandling(exception ->
-//                        exception.authenticationEntryPoint(authEntryPointJwt)
-//                )
+                .exceptionHandling(exception ->
+                        exception.authenticationEntryPoint(authEntryPointJwt)
+                )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth ->
                         auth

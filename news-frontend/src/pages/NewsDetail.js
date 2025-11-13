@@ -4,11 +4,13 @@ import { newsAPI } from '../services/api';
 import BookmarkButton from '../components/BookmarkButton';
 import CommentSection from '../components/CommentSection';
 import LiveNews from './LiveNews';
+import NotFound from './NotFound';
 const NewsDetail = () => {
   const { slugWithId } = useParams(); // Nhận "tin-tuc-moi-123"
   
   // Extract ID từ slug-id
   const extractId = (slugWithId) => {
+    if (!slugWithId) return null;
     const parts = slugWithId.split('-');
     return parts[parts.length - 1]; // Lấy phần cuối cùng (123)
   };
@@ -29,7 +31,7 @@ const NewsDetail = () => {
       const response = await newsAPI.getNewsById(id);
       
       if (!response.data) {
-        setError('Bài viết không tồn tại hoặc đã bị gỡ xuống.');
+        setError('NOT_FOUND');
         return;
       }
       
@@ -43,7 +45,8 @@ const NewsDetail = () => {
       }
     } catch (err) {
       console.error('Error fetching news detail:', err);
-   
+      // Bất kỳ lỗi nào cũng hiển thị NotFound
+      setError('NOT_FOUND');
     } finally {
       setLoading(false);
     }
@@ -73,6 +76,10 @@ const NewsDetail = () => {
     );
   }
 
+  if (error === 'NOT_FOUND') {
+    return <NotFound />;
+  }
+
   if (error) {
     return (
       <div className="container">
@@ -85,7 +92,6 @@ const NewsDetail = () => {
               <i className="fas fa-home me-1"></i>
               Về trang chủ
             </Link>
-
           </div>
         </div>
       </div>

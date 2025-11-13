@@ -7,7 +7,7 @@ const Navbar = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [quickSearch, setQuickSearch] = useState('');
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, loading: authLoading } = useAuth();
   const [unread, setUnread] = useState(0);
   const [notifs, setNotifs] = useState([]);
   const navigate = useNavigate();
@@ -159,7 +159,17 @@ const Navbar = () => {
 
           {/* Authentication Section */}
           <ul className="navbar-nav">
-            {isAuthenticated ? (
+            {authLoading ? (
+              // Loading state - hiển thị placeholder để tránh flash
+              <>
+                <li className="nav-item">
+                  <span className="nav-link" style={{ minWidth: '120px' }}>
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" style={{ width: '1rem', height: '1rem' }}></span>
+                    <span className="visually-hidden">Đang tải...</span>
+                  </span>
+                </li>
+              </>
+            ) : isAuthenticated ? (
               // Logged in user menu
               <>
               <li className="nav-item dropdown me-3">

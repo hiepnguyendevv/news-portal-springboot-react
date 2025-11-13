@@ -3,7 +3,6 @@ package com.news.news_services.entity;
 import jakarta.persistence.*;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "refresh_tokens")
@@ -38,8 +37,6 @@ public class RefreshToken {
     public void setTokenFamily(String tokenFamily) {
         this.tokenFamily = tokenFamily;
     }
-
-
 
     public boolean isRevoked() {
         return revoked;
