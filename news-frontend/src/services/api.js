@@ -1,102 +1,57 @@
-    import axios from "axios";
-    const API_URL = "/api";
+import axios from "axios";
 
-    const api = axios.create({
-        baseURL: API_URL,
-        withCredentials: true, 
-    });
+const API_URL = "/api";
 
-    const refreshApi = axios.create({
-        baseURL: API_URL,
-        withCredentials: true,
-    });
+const api = axios.create({
+    baseURL: API_URL,
+    withCredentials: true, // Để gửi/nhận Cookie HttpOnly
+    headers: {
+        "Content-Type": "application/json",
+    },
+});
 
-    let inMemoryAccessToken = null;
+// Biến lưu token trong RAM
+let inMemoryAccessToken = null;
 
-    export const setAccessToken = (token) => {
-        inMemoryAccessToken = token;
-    };
+export const setAccessToken = (token) => {
+    inMemoryAccessToken = token;
+};
 
-    export const getAccessToken = () => {
-        return inMemoryAccessToken;
-    };
+export const getAccessToken = () => {
+    return inMemoryAccessToken;
+};
 
-    api.interceptors.request.use(
-        (config) => {
-            if (inMemoryAccessToken) {
-                config.headers.Authorization = `Bearer ${inMemoryAccessToken}`;
-            }
-            return config;
-        },
-        (error) => Promise.reject(error)
-    );
+// 1. Request Interceptor: Chỉ làm nhiệm vụ gắn Token vào Header
+api.interceptors.request.use(
+    (config) => {
+        if (inMemoryAccessToken) {
+            config.headers.Authorization = `Bearer ${inMemoryAccessToken}`;
+        }
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
 
-   
-    let isRefreshing = false;
-    let failedQueue = []; 
 
-    const processQueue = (error, token = null) => {
-        failedQueue.forEach(prom => {
-            if (error) {
-                prom.reject(error);
-            } else {
-                prom.resolve(token);
-            }
-        });
-        failedQueue = [];
-    };
+api.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
 
-    api.interceptors.response.use(
-        (response) => response,
-        async (error) => {
-            console.log("Lỗi API:", error.response?.status);
-            const originalRequest = error.config;
-            
-            if ((error.response?.status === 401 || error.response?.status === 403) 
-                && !originalRequest._retry) {
-                
-                if (isRefreshing) {
-                    return new Promise((resolve, reject) => {
-                        failedQueue.push({ resolve, reject });
-                    }).then(token => {
-                        originalRequest.headers.Authorization = 'Bearer ' + token;
-                        return api(originalRequest); 
-                    });
-                }
-
-                originalRequest._retry = true; 
-                isRefreshing = true;
-
-                try {
-            
-                    const rs = await refreshApi.post('/auth/refresh'); 
-                    
-                    const { accessToken } = rs.data;
-                    setAccessToken(accessToken); 
-
-                    api.defaults.headers.common.Authorization = 'Bearer ' + accessToken;
-                    originalRequest.headers.Authorization = 'Bearer ' + accessToken;
-                    processQueue(null, accessToken); 
-
-                    isRefreshing = false;
-                    return api(originalRequest); 
-
-                } catch (_error) {
-                 
-                    isRefreshing = false;
-                    processQueue(_error, null); 
-                    
-                    setAccessToken(null); 
-                    
-                    window.dispatchEvent(new Event("auth-failed"));
-                    
-                    return Promise.reject(_error);
-                }
-            }
-
+      
+        if (originalRequest.url && originalRequest.url.includes('/auth/refresh')) {
             return Promise.reject(error);
         }
-    );
+
+        if (error.response?.status === 401) {
+            console.warn("Phiên đăng nhập hết hạn.");
+            setAccessToken(null);
+            window.dispatchEvent(new Event("auth-failed"));
+        }
+
+        return Promise.reject(error);
+    }
+);
 
     export const newsAPI = {
     // News APIs
@@ -169,8 +124,8 @@
     getCurrentUser: async () => api.get("/auth/me"), 
     logout: async () => api.post("/auth/logout"),
 
-    // API Refresh mới - Dùng refreshApi để tránh vòng lặp vô hạn
-    refreshToken: async () => refreshApi.post("/auth/refresh"),
+    // API Refresh - Chỉ gọi 1 lần lúc khởi động app
+    refreshToken: async () => api.post("/auth/refresh"),
     // Profile APIs (current user)
     updateMyProfile: async (payload) => api.put('/auth/me', payload),
 

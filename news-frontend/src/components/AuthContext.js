@@ -1,9 +1,7 @@
   import React, { createContext, useState, useContext, useEffect } from 'react';
   import { newsAPI, setAccessToken } from '../services/api';
 
-  const AuthContext = createContext();
-  let isRefreshing = false;
-  
+  const AuthContext = createContext();  
   export const useAuth = () => {
     const context = useContext(AuthContext);
     if (!context) {
@@ -35,33 +33,26 @@
 
 
     const checkAuthStatus = async () => {
-      if (isRefreshing) {
-        return;
-      }
-
       try {
-        isRefreshing = true;
-        setLoading(true); 
-        
+        // Gọi refresh token một lần duy nhất để xem cookie còn sống không
         const response = await newsAPI.refreshToken();
+        
         const { accessToken } = response.data;
-        
-        setAccessToken(accessToken);
-
-        const userRefreshed = await refreshUser();
-        
-        if (!userRefreshed) {
-          setUser(null);
-          setIsAuthenticated(false);
-        }
-
-      } catch (error) {
+        setAccessToken(accessToken); // Lưu vào RAM
   
+        // Lấy thông tin user
+        const userRes = await newsAPI.getCurrentUser();
+        setUser(userRes.data);
+        setIsAuthenticated(true);
+  
+      } catch (error) {
+        // Nếu lỗi (Cookie hết hạn, hoặc chưa đăng nhập) -> Không làm gì cả, cứ để là guest
+        console.log("Chưa đăng nhập hoặc phiên đã hết hạn.");
         setUser(null);
         setIsAuthenticated(false);
+        setAccessToken(null);
       } finally {
-        isRefreshing = false;
-        setLoading(false);
+        setLoading(false); // Tắt trạng thái loading
       }
     };
 
@@ -153,7 +144,7 @@
 
     return (
       <AuthContext.Provider value={value}>
-        {children}
+        {!loading && children}
       </AuthContext.Provider>
     );
   };
