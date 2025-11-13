@@ -17,12 +17,12 @@
 
 
     useEffect(() => {
-      checkAuthStatus();
+      // 1. Chạy duy nhất 1 lần khi tải trang
+      restoreSessionOnLoad();
+
+      // 2. Lắng nghe sự kiện logout từ api.js
       const handleAuthFailure = () => {
-        setUser(null);
-        setIsAuthenticated(false);
-        setLoading(false);
-        window.location.href = '/login';
+        forceLogout();
       };
       window.addEventListener("auth-failed", handleAuthFailure);
     
@@ -32,28 +32,34 @@
     }, []);
 
 
-    const checkAuthStatus = async () => {
+    const restoreSessionOnLoad = async () => {
       try {
-        // Gọi refresh token một lần duy nhất để xem cookie còn sống không
-        const response = await newsAPI.refreshToken();
+        setLoading(true);
+        const response = await newsAPI.restoreSession();
         
         const { accessToken } = response.data;
-        setAccessToken(accessToken); // Lưu vào RAM
-  
+        setAccessToken(accessToken);
+
         // Lấy thông tin user
         const userRes = await newsAPI.getCurrentUser();
         setUser(userRes.data);
         setIsAuthenticated(true);
-  
+
       } catch (error) {
-        // Nếu lỗi (Cookie hết hạn, hoặc chưa đăng nhập) -> Không làm gì cả, cứ để là guest
-        console.log("Chưa đăng nhập hoặc phiên đã hết hạn.");
-        setUser(null);
-        setIsAuthenticated(false);
-        setAccessToken(null);
+        // Nếu lỗi -> Coi như là khách
+        console.log("Phiên đăng nhập không tồn tại.");
+        forceLogout();
       } finally {
-        setLoading(false); // Tắt trạng thái loading
+        setLoading(false);
       }
+    };
+
+    const forceLogout = () => {
+      setAccessToken(null);
+      setUser(null);
+      setIsAuthenticated(false);
+      // Nếu muốn chuyển hướng cứng về trang login:
+      // window.location.href = "/login";
     };
 
     const refreshUser = async () => {
@@ -121,14 +127,11 @@
     const logout = async () => {
       try {
         await newsAPI.logout(); 
-    } catch (error) {
-    } finally {
-        setAccessToken(null);
-        setUser(null);
-        setIsAuthenticated(false);
-        
-        localStorage.removeItem('token'); 
-    }
+      } catch (e) {
+        console.error("Logout error", e);
+      } finally {
+        forceLogout();
+      }
     };
 
     const value = {

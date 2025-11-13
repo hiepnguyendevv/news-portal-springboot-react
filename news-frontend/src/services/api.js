@@ -4,13 +4,12 @@ const API_URL = "/api";
 
 const api = axios.create({
     baseURL: API_URL,
-    withCredentials: true, // Để gửi/nhận Cookie HttpOnly
+    withCredentials: true, 
     headers: {
         "Content-Type": "application/json",
     },
 });
 
-// Biến lưu token trong RAM
 let inMemoryAccessToken = null;
 
 export const setAccessToken = (token) => {
@@ -20,8 +19,6 @@ export const setAccessToken = (token) => {
 export const getAccessToken = () => {
     return inMemoryAccessToken;
 };
-
-// 1. Request Interceptor: Chỉ làm nhiệm vụ gắn Token vào Header
 api.interceptors.request.use(
     (config) => {
         if (inMemoryAccessToken) {
@@ -32,20 +29,21 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-
 api.interceptors.response.use(
     (response) => response,
-    async (error) => {
+    (error) => {
         const originalRequest = error.config;
-
+        const status = error.response ? error.response.status : null;
       
         if (originalRequest.url && originalRequest.url.includes('/auth/refresh')) {
             return Promise.reject(error);
         }
 
-        if (error.response?.status === 401) {
-            console.warn("Phiên đăng nhập hết hạn.");
+        if (status === 401) {
+            console.warn("Token hết hạn. Đăng xuất ngay lập tức.");
+            
             setAccessToken(null);
+            
             window.dispatchEvent(new Event("auth-failed"));
         }
 
@@ -124,8 +122,8 @@ api.interceptors.response.use(
     getCurrentUser: async () => api.get("/auth/me"), 
     logout: async () => api.post("/auth/logout"),
 
-    // API Refresh - Chỉ gọi 1 lần lúc khởi động app
-    refreshToken: async () => api.post("/auth/refresh"),
+    // API Restore Session - Chỉ gọi 1 lần lúc F5 trang web
+    restoreSession: async () => api.post("/auth/refresh"),
     // Profile APIs (current user)
     updateMyProfile: async (payload) => api.put('/auth/me', payload),
 
@@ -209,10 +207,9 @@ api.interceptors.response.use(
         try {
             const response = await api.post('/media/upload-news', formData); 
             
-            // Trả về object chứa cả url và mediaId
             return {
-                location: response.data.location || response.data.url, // TinyMCE cần "location"
-                mediaId: response.data.mediaId, // Để cache
+                location: response.data.location || response.data.url, 
+                mediaId: response.data.mediaId, 
                 url: response.data.url || response.data.location
             };
 

@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Optional;
@@ -76,10 +77,8 @@ public class RefreshTokenService {
             if(revokedToken.isPresent() && revokedToken.get().isRevoked()){
                 System.out.println("Phát hiện tái sử dùng refresh token");
                 refreshTokenRepository.revokeTokenFamily(revokedToken.get().getTokenFamily());
-                System.out.println("Xóa family liên quan: "+ revokedToken.get().getTokenFamily());
 
-
-                throw new SecurityException("Phát hiện tái sử dụng Refresh Token!");
+//                throw new SecurityException("Phát hiện tái sử dụng Refresh Token!");
             }
             System.out.println("Token không hợp lệ");
             throw new SecurityException("Refresh Token không hợp lệ!");
@@ -91,6 +90,12 @@ public class RefreshTokenService {
             oldToken.setRevoked(true);
             refreshTokenRepository.save(oldToken);
             throw new SecurityException("Refresh Token đã hết hạn!");
+        }
+
+        long secondsSinceCreation = Duration.between(oldToken.getCreatedAt(), Instant.now()).getSeconds();
+
+        if (secondsSinceCreation < 15) {
+            return new ExchangeTokenResponse(oldRawToken, oldToken.getUser());
         }
 
         oldToken.setRevoked(true);

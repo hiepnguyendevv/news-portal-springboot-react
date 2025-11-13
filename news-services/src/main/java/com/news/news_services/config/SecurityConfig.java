@@ -116,7 +116,7 @@ public class SecurityConfig {
                                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                                 .requestMatchers("/ws/**").permitAll()
 //                                .requestMatchers("/api/auth/**").authenticated() // Các endpoint /api/auth khác cần auth
-                                .anyRequest().authenticated()
+                                    .anyRequest().authenticated()
                         )
                 .oauth2Login(oauth2 -> {
                     oauth2.loginPage("/login")
