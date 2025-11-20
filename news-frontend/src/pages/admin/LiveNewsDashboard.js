@@ -19,6 +19,7 @@ const LiveNewsDashboard = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState(null);
   const clientRef = useRef(null);
+  const [sortOrder, setSortOrder] = useState('desc'); 
 
 
     useEffect(() => {
@@ -49,7 +50,13 @@ const LiveNewsDashboard = () => {
                         switch(eventData.action){
                             case 'ADD_ENTRY':
                                 console.log('add successfuly');
-                                setEntries(prev => [eventData, ...prev]);
+                                setEntries(prev => {
+                                    if (sortOrder === 'desc') {
+                                        return [eventData, ...prev]; 
+                                    } else {
+                                        return [...prev, eventData];
+                                    }
+                               });
                                 break;
                             case 'UPDATE_ENTRY':
                                 console.log('update successfuly');
@@ -88,14 +95,13 @@ const LiveNewsDashboard = () => {
                     clientRef.current.deactivate();
                 }
         };
-    }, [newsId, authLoading]);
+    }, [newsId, authLoading, sortOrder]);
     
 
     useEffect(() => {
         const loadInitialData = async () => {
             try {
-                const res = await fetch(`/api/live-content/news/${newsId}?page=0&size=20`);
-                if (!res.ok) {
+                const res = await fetch(`/api/live-content/news/${newsId}?page=0&size=20&sort=${sortOrder}`);                if (!res.ok) {
                     const text = await res.text();
                     throw new Error(`HTTP ${res.status}: ${text.slice(0,200)}`);
                   }
@@ -110,7 +116,7 @@ const LiveNewsDashboard = () => {
         if (newsId) {
             loadInitialData();
         }
-    }, [newsId]);
+    }, [newsId, sortOrder]);
     
 
     const sendEntry = (payload) => {
@@ -211,6 +217,30 @@ const LiveNewsDashboard = () => {
               onSubmit={sendEntry}
               isConnected={isConnected}
           />
+          {/* THANH CÔNG CỤ SẮP XẾP */}
+          <div className="d-flex justify-content-between align-items-center mb-3">
+                <span className="fw-bold text-uppercase text-danger">
+                    <span className="spinner-grow spinner-grow-sm me-2" role="status"/>
+                    Trực tiếp
+                </span>
+                
+                <div className="btn-group" role="group">
+                    <button 
+                        type="button" 
+                        className={`btn btn-sm ${sortOrder === 'desc' ? 'btn-primary' : 'btn-outline-primary'}`}
+                        onClick={() => setSortOrder('desc')}
+                    >
+                         Mới nhất
+                    </button>
+                    <button 
+                        type="button" 
+                        className={`btn btn-sm ${sortOrder === 'asc' ? 'btn-primary' : 'btn-outline-primary'}`}
+                        onClick={() => setSortOrder('asc')}
+                    >
+                        Cũ nhất
+                    </button>
+                </div>
+            </div>
           
           <EntryList
               entries={entries}

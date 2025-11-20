@@ -2,6 +2,7 @@ package com.news.news_services.repository;
 
 import com.news.news_services.entity.LiveContent;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -18,6 +19,7 @@ public interface LiveContentRepository extends JpaRepository<LiveContent,Long> {
     List<LiveContent> findByNewsIdAndEntryStatusOrderByCreatedAtDesc(Long newsId, LiveContent.EntryStatus entryStatus);
 
     List<LiveContent> findByNewsId(Long newsId);
+    Page<LiveContent> findByNewsId(Long newsId, Pageable pageable);
     void deleteById(Long id);
 
 }

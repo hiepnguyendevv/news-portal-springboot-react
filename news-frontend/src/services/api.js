@@ -1,55 +1,106 @@
-import axios from "axios";
+    import axios from "axios";
 
-const API_URL = "/api";
+    const API_URL = "/api";
 
-const api = axios.create({
-    baseURL: API_URL,
-    withCredentials: true, 
-    headers: {
-        "Content-Type": "application/json",
-    },
-});
+    const api = axios.create({
+        baseURL: API_URL,
+        withCredentials: true,
+    });
 
-let inMemoryAccessToken = null;
+    let inMemoryAccessToken = null;
 
-export const setAccessToken = (token) => {
-    inMemoryAccessToken = token;
-};
+    export const setAccessToken = (token) => {
+        inMemoryAccessToken = token;
+    };
 
-export const getAccessToken = () => {
-    return inMemoryAccessToken;
-};
-api.interceptors.request.use(
-    (config) => {
-        if (inMemoryAccessToken) {
-            config.headers.Authorization = `Bearer ${inMemoryAccessToken}`;
-        }
-        return config;
-    },
-    (error) => Promise.reject(error)
-);
+    export const getAccessToken = () => {
+        return inMemoryAccessToken;
+    };
 
-api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        const originalRequest = error.config;
-        const status = error.response ? error.response.status : null;
-      
-        if (originalRequest.url && originalRequest.url.includes('/auth/refresh')) {
+    api.interceptors.request.use(
+        (config) => {
+            // Lấy token từ bộ nhớ, không phải localStorage
+            if (inMemoryAccessToken) {
+                config.headers.Authorization = `Bearer ${inMemoryAccessToken}`;
+            }
+            
+            // Nếu là FormData, để axios tự động set Content-Type
+            // Nếu không phải FormData, set Content-Type là application/json
+            if (!(config.data instanceof FormData)) {
+                config.headers['Content-Type'] = 'application/json';
+            }
+            
+            return config;
+        },
+        (error) => Promise.reject(error)
+    );
+
+    // 2. INTERCEPTOR NHẬN RESPONSE (LOGIC QUAN TRỌNG NHẤT)
+    let isRefreshing = false;
+    let failedQueue = []; // Hàng đợi các request bị lỗi 401
+
+    const processQueue = (error, token = null) => {
+        failedQueue.forEach(prom => {
+            if (error) {
+                prom.reject(error);
+            } else {
+                prom.resolve(token);
+            }
+        });
+        failedQueue = [];
+    };
+
+    api.interceptors.response.use(
+        (response) => response, 
+        async (error) => {
+            const originalRequest = error.config;
+            
+            if (originalRequest.url && originalRequest.url.includes('/auth/refresh')) {
+                return Promise.reject(error);
+            }
+            
+            if (error.response?.status === 401 && !originalRequest._retry) {
+                
+                if (isRefreshing) {
+                    return new Promise((resolve, reject) => {
+                        failedQueue.push({ resolve, reject });
+                    }).then(token => {
+                        originalRequest.headers.Authorization = 'Bearer ' + token;
+                        return api(originalRequest); 
+                    });
+                }   
+
+                originalRequest._retry = true; 
+                isRefreshing = true;
+
+                try {
+                    const rs = await api.post('/auth/refresh'); 
+                    
+                    const { accessToken } = rs.data;
+                    setAccessToken(accessToken); 
+
+                    api.defaults.headers.common.Authorization = 'Bearer ' + accessToken;
+                    originalRequest.headers.Authorization = 'Bearer ' + accessToken;
+                    processQueue(null, accessToken); 
+
+                    isRefreshing = false;
+                    return api(originalRequest); 
+
+                } catch (_error) {
+                    isRefreshing = false;
+                    processQueue(_error, null); 
+                    
+                    setAccessToken(null); 
+                    
+                    window.dispatchEvent(new Event("auth-failed"));
+                    
+                    return Promise.reject(_error);
+                }
+            }
+
             return Promise.reject(error);
         }
-
-        if (status === 401) {
-            console.warn("Token hết hạn. Đăng xuất ngay lập tức.");
-            
-            setAccessToken(null);
-            
-            window.dispatchEvent(new Event("auth-failed"));
-        }
-
-        return Promise.reject(error);
-    }
-);
+    );
 
     export const newsAPI = {
     // News APIs
@@ -177,6 +228,9 @@ api.interceptors.response.use(
     },
     //
     //Live News APIs
+    getLiveContent: async (newsId, page = 0, size = 1000, sort = 'desc') => {
+        return api.get(`/live-content/news/${newsId}?page=${page}&size=${size}&sort=${sort}`);
+    },
     deleteLiveEntry: async (entryId) => api.delete(`/live-content/${entryId}`),
 
     //Media APIs

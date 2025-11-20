@@ -40,7 +40,7 @@ public class LiveContentService {
     private Cloudinary cloudinary;
 
     public Page<LiveNewsEvent> getLivedContent(Long newsId, Pageable pageable) {
-        Page<LiveContent> liveContents = liveContentRepository.findByNewsIdOrderByCreatedAtDesc(newsId,pageable);
+        Page<LiveContent> liveContents = liveContentRepository.findByNewsId(newsId,pageable);
         return liveContents.map(this::convertToLiveEvent);
     }
 

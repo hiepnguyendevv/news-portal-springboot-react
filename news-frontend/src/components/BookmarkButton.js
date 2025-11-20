@@ -8,7 +8,7 @@ const BookmarkButton = ({ newsId, size = 'md' }) => {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        if(!user) return;
+        if(!user || !newsId) return;
         newsAPI.isBookmarked(newsId).then(res => setBookmarked(res.data.bookmarked)).catch(()=>{});
     }, [newsId, user]);
 

@@ -12,10 +12,13 @@ const CommentSection = ({ newsId }) => {
   const [likedComments, setLikedComments] = useState(new Set());
 
   useEffect(() => {
-    loadComments();
+    if (newsId) {
+      loadComments();
+    }
   }, [newsId]);
 
   const loadComments = async () => {
+    if (!newsId) return;
     try {
       const response = await newsAPI.getComments(newsId);
       const commentsData = response.data || [];

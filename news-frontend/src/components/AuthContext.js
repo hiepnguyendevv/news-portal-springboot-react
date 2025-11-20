@@ -1,4 +1,4 @@
-  import React, { createContext, useState, useContext, useEffect } from 'react';
+  import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
   import { newsAPI, setAccessToken } from '../services/api';
 
   const AuthContext = createContext();  
@@ -14,16 +14,16 @@
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
-
+    const isRestoring = useRef(false);
 
     useEffect(() => {
-      // 1. Chạy duy nhất 1 lần khi tải trang
+      
       restoreSessionOnLoad();
 
-      // 2. Lắng nghe sự kiện logout từ api.js
       const handleAuthFailure = () => {
         forceLogout();
       };
+      
       window.addEventListener("auth-failed", handleAuthFailure);
     
       return () => {
@@ -33,24 +33,28 @@
 
 
     const restoreSessionOnLoad = async () => {
+      if (isRestoring.current) {
+        return;
+      }
+      
       try {
+        isRestoring.current = true;
         setLoading(true);
         const response = await newsAPI.restoreSession();
         
         const { accessToken } = response.data;
         setAccessToken(accessToken);
 
-        // Lấy thông tin user
         const userRes = await newsAPI.getCurrentUser();
         setUser(userRes.data);
         setIsAuthenticated(true);
 
       } catch (error) {
-        // Nếu lỗi -> Coi như là khách
         console.log("Phiên đăng nhập không tồn tại.");
         forceLogout();
       } finally {
         setLoading(false);
+        isRestoring.current = false;
       }
     };
 
@@ -58,8 +62,7 @@
       setAccessToken(null);
       setUser(null);
       setIsAuthenticated(false);
-      // Nếu muốn chuyển hướng cứng về trang login:
-      // window.location.href = "/login";
+      
     };
 
     const refreshUser = async () => {
@@ -90,7 +93,7 @@
         return { success: true, user: userData };
     } catch (error) {
         return { success: false, error: 'Đăng nhập thất bại' };
-    }
+    } 
     };
 
     const login = async (credentials) => {

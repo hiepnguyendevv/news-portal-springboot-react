@@ -121,7 +121,38 @@
 
 .news-content img,
 .news-content video {
-    max-width: 100%; /* Quan trọng nhất: Không bao giờ rộng hơn cha */
-    height: auto;    /* Giữ đúng tỷ lệ khung hình */
-    object-fit: cover; /* Hiển thị đẹp hơn nếu ảnh bị co dãn */
+    max-width: 100%; 
+    height: auto;    
+    object-fit: cover; 
+}
+
+.news-content {
+  overflow-x: visible; 
+}
+
+.news-content img, 
+.news-content figure {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1.5rem auto;
+}
+
+@media (min-width: 992px) {
+  .news-content img, 
+  .news-content figure {
+    width: 130% !important; 
+    max-width: 130% !important;
+    
+
+    margin-left: -15%;
+    margin-right: -15%;
+  }
+  
+  .news-content figcaption {
+    text-align: center;
+    font-style: italic;
+    color: #666;
+    margin-top: 0.5rem;
+  }
 }

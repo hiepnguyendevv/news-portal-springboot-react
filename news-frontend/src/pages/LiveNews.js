@@ -4,8 +4,9 @@ import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
 import BookmarkButton from '../components/BookmarkButton';
 import CommentSection from '../components/CommentSection';
+import { newsAPI } from '../services/api';
+import { useAuth } from '../components/AuthContext';
 
-// --- COMPONENT CON: HIỂN THỊ MỘT ENTRY ---
 const LiveEntry = ({ entry }) => (
     <div className="live-entry-article border-bottom py-4">
         <p className="entry-timestamp text-muted mb-2">
@@ -46,7 +47,6 @@ const LiveEntry = ({ entry }) => (
     </div>
 );
 
-// --- COMPONENT CON: NÚT SCROLL LÊN ĐẦU TRANG ---
 const ScrollToTopButton = () => {
     const [isVisible, setIsVisible] = useState(false);
 
@@ -81,49 +81,41 @@ const ScrollToTopButton = () => {
     );
 };
 
-// --- COMPONENT CHÍNH: LIVE BLOG ---
 export default function LiveNews() {
     const { slugWithId } = useParams();
+    const { loading: authLoading } = useAuth();
     
     // Extract ID từ slugWithId
     const extractId = (slugWithId) => {
         if (!slugWithId) return null;
         const parts = slugWithId.split('-');
-        return parts[parts.length - 1]; // Lấy phần cuối cùng (123)
+        return parts[parts.length - 1]; 
     };
     
     const newsId = extractId(slugWithId);
     const [entries, setEntries] = useState([]);
-    const [pinnedEntry, setPinnedEntry] = useState(null);
     const [connected, setConnected] = useState(false);
     const [error, setError] = useState(null);
     const [news, setNews] = useState(null);
     const clientRef = useRef(null);
+    const [sortOrder, setSortOrder] = useState('desc');
 
     useEffect(() => {
+        if (!newsId || authLoading) return; // Đợi auth xong
+
         const loadInitialData = async () => {
             try {
-                // Load live content
-                const res = await fetch(`/api/live-content/news/${newsId}?page=0&size=50`);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const page = await res.json();
-                if (page?.content) {
-                    const allEntries = page.content;
-                    const pinned = allEntries.find(e => e.entryStatus === 'PINNED');
-                    const regular = allEntries.filter(e => e.entryStatus !== 'PINNED').reverse();
-                    
-                    setPinnedEntry(pinned);
-                    setEntries(regular);
-                }
+                // Load live content với sort
+                const liveRes = await newsAPI.getLiveContent(newsId, 0, 1000, sortOrder);
+                setEntries(liveRes.data.content || liveRes.data || []);
 
                 // Load news detail
-                const newsRes = await fetch(`/api/news/${newsId}`);
-                if (newsRes.ok) {
-                    const newsData = await newsRes.json();
-                    setNews(newsData);
-                }
+                const newsRes = await newsAPI.getNewsById(newsId);
+                setNews(newsRes.data);
             } catch (e) {
-                setError('Không thể tải dữ liệu');
+                console.error('Error loading data:', e);
+                setError('Không thể tải dữ liệu: ' + e.message);
+                setEntries([]);
             }
         };
 
@@ -138,39 +130,39 @@ export default function LiveNews() {
                 setConnected(true);
                 setError(null);
                 client.subscribe(`/topic/live/${newsId}`, (frame) => {
-                    const eventData = JSON.parse(frame.body);
-                    console.log('LiveNews received:', eventData);
-                    
-                    switch(eventData.action) {
-                        case 'ADD_ENTRY':
-                            if (eventData.entryStatus === 'PINNED') {
-                                setPinnedEntry(eventData);
-                            } else {
-                                setEntries(prevEntries => [...prevEntries, eventData]);
-                            }
-                            break;
-                            
-                        case 'UPDATE_ENTRY':
-                            if (eventData.entryStatus === 'PINNED') {
-                                setPinnedEntry(eventData);
-                            } else {
+                    try {
+                        const eventData = JSON.parse(frame.body);
+                        console.log('LiveNews received:', eventData);
+                        
+                        switch(eventData.action) {
+                            case 'ADD_ENTRY':
+                                setEntries(prevEntries => {
+                                    if (sortOrder === 'desc') {
+                                        return [eventData, ...prevEntries];
+                                    } else {
+                                        return [...prevEntries, eventData];
+                                    }
+                                });
+                                break;
+                                
+                            case 'UPDATE_ENTRY':
                                 setEntries(prevEntries => 
                                     prevEntries.map(entry => entry.id === eventData.id ? eventData : entry)
                                 );
-                            }
-                            break;
-                            
-                        case 'REMOVE_ENTRY':
-                            // Xóa khỏi cả pinned và entries
-                            setPinnedEntry(prev => prev?.id === eventData.id ? null : prev);
-                            setEntries(prevEntries => 
-                                prevEntries.filter(entry => entry.id !== eventData.id)
-                            );
-                            break;
-                            
-                        default:
-                            console.log('Unknown action:', eventData.action);
-                            break;
+                                break;
+                                
+                            case 'REMOVE_ENTRY':
+                                setEntries(prevEntries => 
+                                    prevEntries.filter(entry => entry.id !== eventData.id)
+                                );
+                                break;
+                                
+                            default:
+                                console.log('Unknown action:', eventData.action);
+                                break;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing WebSocket message:', e, frame.body);
                     }
                 });
             };
@@ -182,13 +174,15 @@ export default function LiveNews() {
             clientRef.current = client;
         };
 
-        loadInitialData();
-        connect();
+        if (newsId) {
+            loadInitialData();
+            connect();
+        }
 
         return () => {
             try { clientRef.current?.deactivate(); } catch {}
         };
-    }, [newsId]);
+    }, [newsId, sortOrder, authLoading]);
 
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString('vi-VN', {
@@ -220,6 +214,12 @@ export default function LiveNews() {
                 </nav>
             )}
 
+            {error && (
+                <div className="alert alert-danger" role="alert">
+                    {error}
+                </div>
+            )}
+
             <article className="row">
                 <div className="col-lg-8 mx-auto">
                     {news && (
@@ -241,16 +241,22 @@ export default function LiveNews() {
                     )}
 
                     <div className="news-content">
-                        <div className="fs-5 lh-lg">
-                    {pinnedEntry && (
-                        <div className="pinned-entry bg-light p-3 p-md-4 rounded my-4">
-                            <h5 className="fw-bold mb-3">TIN NỔI BẬT</h5>
-                            <div className="live-entry-article py-0">
-                                 <LiveEntry entry={pinnedEntry} />
-                            </div>
+                        <div className="d-flex justify-content-end mb-3 gap-2">
+                            <button 
+                                className={`btn btn-sm ${sortOrder === 'desc' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                onClick={() => setSortOrder('desc')}
+                            >
+                                Mới nhất
+                            </button>
+                            <button 
+                                className={`btn btn-sm ${sortOrder === 'asc' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                onClick={() => setSortOrder('asc')}
+                            >
+                                Cũ nhất
+                            </button>
                         </div>
-                    )}
-                    
+
+                        <div className="fs-5 lh-lg">
                             <div>
                                 {entries.map(e => <LiveEntry key={e.id} entry={e} />)}
                             </div>
@@ -272,7 +278,7 @@ export default function LiveNews() {
                                 <i className="fas fa-share me-1"></i>
                                 Chia sẻ
                             </button>
-                            <BookmarkButton newsId={news?.id} />
+                            {news?.id && <BookmarkButton newsId={news.id} />}
                         </div>
                     </div>
                     
@@ -289,7 +295,7 @@ export default function LiveNews() {
                 </div>
             </article>
             
-            <CommentSection newsId={news?.id} />
+            {news?.id && <CommentSection newsId={news.id} />}
         </div>
     );
 }

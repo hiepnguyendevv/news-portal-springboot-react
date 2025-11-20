@@ -9,43 +9,53 @@ DANH SÁCH CHỨC NĂNG HIỆN TẠI
    - Refresh Token tự động
    - Đăng xuất
    - Xem/Cập nhật profile
+   - Restore session khi F5 trang
 
 2. QUẢN LÝ TIN TỨC
    - Xem danh sách tin (phân trang)
    - Xem chi tiết tin
    - Tìm kiếm tin
-   - Lọc theo category
-   - Sắp xếp theo lượt xem
-   - Đếm lượt xem
+   - Lọc theo category (theo tên và slug)
+   - Sắp xếp theo lượt xem (tăng/giảm)
+   - Đếm lượt xem (tracking visitor data)
    - User: Tạo/Sửa/Xóa/Gửi duyệt tin
    - Admin: Duyệt/Từ chối/Quản lý tin
    - Xóa/Duyệt hàng loạt
+   - Upload ảnh đại diện cho tin tức
 
 3. LIVE NEWS (REAL-TIME)
-   - Tạo Live News
+   - Tạo Live News (chỉ Admin)
    - Thêm/Cập nhật/Xóa entries
    - Real-time updates qua WebSocket
    - Upload media cho entries
+   - Xem Live News với phân trang
+   - Sắp xếp entries theo thời gian
 
 4. COMMENTS
-   - Xem comments (nhiều cấp)
+   - Xem comments (nhiều cấp - nested)
    - Thêm/Xóa comment
    - Like/Unlike comment
-   - Reply comment
+   - Reply comment (trả lời comment)
    - Admin: Quản lý, tìm kiếm, xóa/khôi phục
+   - Soft delete comments
 
 5. BOOKMARKS
    - Lưu/Bỏ lưu bài viết
-   - Xem danh sách đã lưu
+   - Xem danh sách đã lưu (phân trang)
+   - Kiểm tra trạng thái bookmark
 
 6. CATEGORIES
-   - Xem categories (hierarchical)
+   - Xem categories (hierarchical - có parent/child)
+   - Xem subcategories
    - Admin: Tạo/Sửa/Xóa category
    - Xóa hàng loạt
+   - Đếm số bài viết theo category
 
 7. TAGS
    - Auto-generate tags từ nội dung
    - Xem tất cả tags
+   - Admin: Tạo/Sửa/Xóa tag
+   - Hiển thị tags trên bài viết
 
 8. NOTIFICATIONS
    - Xem thông báo
@@ -56,10 +66,12 @@ DANH SÁCH CHỨC NĂNG HIỆN TẠI
    - Xem/Tạo/Sửa/Xóa user
    - Cập nhật status (ACTIVE/INACTIVE)
    - Xóa/Cập nhật hàng loạt
+   - Soft delete user
 
 10. MEDIA
     - Upload ảnh/video
     - Tích hợp Cloudinary
+    - Upload ảnh cho tin tức
 
 11. SECURITY
     - JWT Authentication
@@ -67,22 +79,267 @@ DANH SÁCH CHỨC NĂNG HIỆN TẠI
     - Token rotation
     - Role-based access (USER/ADMIN)
     - Password BCrypt encryption
+    - WebSocket authentication
 
 12. FRONTEND
     - Responsive UI
     - Protected routes
     - Admin routes
+    - Guest routes
     - Toast notifications
     - Pagination
     - Loading states
+    - Error handling
 
 ========================================
 TỔNG KẾT
 ========================================
-- API Endpoints: ~60+
+- API Endpoints: ~75+
 - Controllers: 14
 - Frontend Pages: 20+
 - Database: MySQL + Redis
 - Real-time: WebSocket + Redis Pub/Sub
+- Media: Cloudinary integration
+
+========================================
+ĐỀ XUẤT CHỨC NĂNG MỚI
+========================================
+
+1. TÍNH NĂNG TƯƠNG TÁC & XÃ HỘI
+   ⭐ Like/Dislike bài viết
+      - Cho phép user like/dislike bài viết
+      - Hiển thị số lượt like
+      - Lưu lịch sử like của user
+   
+   ⭐ Share bài viết
+      - Share lên Facebook, Twitter, LinkedIn
+      - Copy link bài viết
+      - Tạo short URL
+      - Đếm số lượt share
+   
+   ⭐ Follow/Unfollow tác giả
+      - Follow các tác giả yêu thích
+      - Xem danh sách bài viết của tác giả đã follow
+      - Thông báo khi tác giả đăng bài mới
+   
+   ⭐ Rating bài viết
+      - Đánh giá bài viết theo sao (1-5 sao)
+      - Hiển thị điểm trung bình
+      - Xem đánh giá của người khác
+
+2. TÍNH NĂNG TÌM KIẾM & LỌC NÂNG CAO
+   ⭐ Tìm kiếm nâng cao
+      - Tìm theo tag
+      - Tìm theo tác giả
+      - Tìm theo khoảng thời gian
+      - Tìm theo lượt xem/like
+      - Lọc kết hợp nhiều điều kiện
+   
+   ⭐ Trending/Hot news
+      - Tính toán trending dựa trên view, like, comment trong 24h
+      - Hiển thị "Hot" badge
+      - Trang Trending riêng
+   
+   ⭐ Lọc theo thời gian
+      - Hôm nay, tuần này, tháng này
+      - Tùy chọn khoảng thời gian
+   
+   ⭐ Gợi ý bài viết liên quan
+      - Dựa trên category, tags
+      - Machine learning recommendations
+      - "Bạn có thể quan tâm"
+
+3. TÍNH NĂNG CÁ NHÂN HÓA
+   ⭐ Reading history
+      - Lưu lịch sử đọc bài
+      - Xem lại các bài đã đọc
+      - Đánh dấu "Đã đọc"
+      - Xóa lịch sử
+   
+   ⭐ Reading preferences
+      - Chọn categories yêu thích
+      - Chọn tác giả yêu thích
+      - Tùy chỉnh trang chủ
+   
+   ⭐ Reading list/Collections
+      - Tạo danh sách đọc tùy chỉnh
+      - Thêm bài viết vào collection
+      - Chia sẻ collection
+   
+   ⭐ Dark mode
+      - Chuyển đổi dark/light theme
+      - Lưu preference
+
+4. TÍNH NĂNG THÔNG BÁO & TƯƠNG TÁC
+   ⭐ Push notifications
+      - Browser push notifications
+      - Thông báo bài viết mới từ tác giả follow
+      - Thông báo reply comment
+      - Thông báo bài viết được duyệt/từ chối
+   
+   ⭐ Email notifications
+      - Gửi email khi có thông báo quan trọng
+      - Newsletter hàng tuần
+      - Digest email
+   
+   ⭐ Real-time notifications
+      - WebSocket cho notifications
+      - Badge số thông báo chưa đọc
+      - Dropdown notifications
+
+5. TÍNH NĂNG NỘI DUNG
+   ⭐ Draft auto-save
+      - Tự động lưu nháp khi viết bài
+      - Khôi phục nháp
+      - Lịch sử chỉnh sửa
+   
+   ⭐ Rich text editor nâng cao
+      - Thêm video embed (YouTube, Vimeo)
+      - Thêm code blocks với syntax highlighting
+      - Thêm tables
+      - Thêm quotes
+   
+   ⭐ Featured/Highlighted news
+      - Admin đánh dấu bài nổi bật
+      - Hiển thị ở đầu trang chủ
+      - Carousel slider
+   
+   ⭐ News scheduling
+      - Lên lịch đăng bài
+      - Auto-publish theo thời gian
+   
+   ⭐ News versioning
+      - Lưu các phiên bản bài viết
+      - So sánh các phiên bản
+      - Rollback về phiên bản cũ
+
+6. TÍNH NĂNG PHÂN TÍCH & THỐNG KÊ
+   ⭐ Analytics dashboard (Admin)
+      - Tổng số bài viết, users, comments
+      - Biểu đồ thống kê theo thời gian
+      - Top bài viết xem nhiều nhất
+      - Top tác giả
+      - Thống kê theo category
+   
+   ⭐ Author analytics
+      - Số lượt xem bài viết của mình
+      - Số lượt like, comment
+      - Biểu đồ performance
+   
+   ⭐ View analytics
+      - Xem chi tiết lượt xem (theo ngày, giờ)
+      - Xem theo địa lý (nếu có IP tracking)
+      - Xem theo device/browser
+
+7. TÍNH NĂNG BẢO MẬT & MODERATION
+   ⭐ Content moderation
+      - Tự động phát hiện spam comments
+      - Tự động phát hiện nội dung không phù hợp
+      - Report bài viết/comment
+      - Admin xử lý report
+   
+   ⭐ User verification
+      - Xác thực tác giả (verified badge)
+      - Xác thực email
+      - Xác thực số điện thoại
+   
+   ⭐ Rate limiting
+      - Giới hạn số request
+      - Chống spam
+      - Chống DDoS
+   
+   ⭐ Two-factor authentication (2FA)
+      - Bảo mật tài khoản
+      - SMS/Email OTP
+      - Authenticator app
+
+8. TÍNH NĂNG TÍCH HỢP
+   ⭐ RSS Feed
+      - Tạo RSS feed cho categories
+      - RSS feed cho tác giả
+      - RSS feed tổng hợp
+   
+   ⭐ Sitemap
+      - Tự động generate sitemap.xml
+      - Submit lên Google Search Console
+   
+   ⭐ SEO optimization
+      - Meta tags tự động
+      - Open Graph tags
+      - Twitter Cards
+      - Structured data (JSON-LD)
+   
+   ⭐ Social media integration
+      - Auto-post lên Facebook khi đăng bài
+      - Auto-post lên Twitter
+      - Embed social media posts
+
+9. TÍNH NĂNG MOBILE
+   ⭐ Progressive Web App (PWA)
+      - Cài đặt như app
+      - Offline support
+      - Push notifications
+   
+   ⭐ Mobile app (React Native)
+      - App iOS/Android
+      - Tất cả tính năng web
+      - Native performance
+
+10. TÍNH NĂNG KHÁC
+    ⭐ Newsletter subscription
+       - Đăng ký nhận tin tức qua email
+       - Chọn categories muốn nhận
+       - Unsubscribe
+   
+    ⭐ Polls/Surveys
+       - Tạo poll trong bài viết
+       - User vote
+       - Hiển thị kết quả
+   
+    ⭐ Events calendar
+       - Tạo sự kiện
+       - Lịch sự kiện
+       - Reminder
+   
+    ⭐ Multi-language support
+       - Hỗ trợ nhiều ngôn ngữ
+       - Chuyển đổi ngôn ngữ
+       - Auto-translate (tùy chọn)
+   
+    ⭐ Print-friendly version
+       - Trang in thân thiện
+       - Loại bỏ ads, sidebar
+   
+    ⭐ Export bài viết
+       - Export PDF
+       - Export Word
+       - Export Markdown
+
+========================================
+ƯU TIÊN TRIỂN KHAI (TOP 10)
+========================================
+
+1. ⭐⭐⭐ Like/Dislike bài viết - Tăng tương tác
+2. ⭐⭐⭐ Share bài viết - Tăng reach
+3. ⭐⭐⭐ Reading history - Cải thiện UX
+4. ⭐⭐⭐ Push notifications - Tăng engagement
+5. ⭐⭐⭐ Trending/Hot news - Tăng traffic
+6. ⭐⭐⭐ Analytics dashboard - Quản lý tốt hơn
+7. ⭐⭐⭐ Draft auto-save - Cải thiện UX cho tác giả
+8. ⭐⭐⭐ RSS Feed - Tích hợp với các platform khác
+9. ⭐⭐⭐ SEO optimization - Tăng visibility
+10. ⭐⭐⭐ Dark mode - Cải thiện UX
+
+========================================
+GHI CHÚ
+========================================
+- Các tính năng được đánh dấu ⭐⭐⭐ là ưu tiên cao
+- Các tính năng được đánh dấu ⭐⭐ là ưu tiên trung bình
+- Các tính năng được đánh dấu ⭐ là ưu tiên thấp
+- Nên triển khai từng tính năng một, test kỹ trước khi chuyển sang tính năng tiếp theo
+
+
+
+
 
 

@@ -8,6 +8,7 @@
     import org.springframework.data.domain.Page;    
     import org.springframework.data.domain.PageRequest;
     import org.springframework.data.domain.Pageable;
+    import org.springframework.data.domain.Sort;
     import org.springframework.http.ResponseEntity;
     import org.springframework.messaging.handler.annotation.DestinationVariable;
     import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -25,12 +26,15 @@
         LiveContentService liveContentService;
     
         @GetMapping("/news/{newsId}")
-        public ResponseEntity<Page<LiveNewsEvent>> getLiveContent(@PathVariable Long newsId,
+        public ResponseEntity<Page<LiveNewsEvent>> getLiveContent(
+                                                @PathVariable Long newsId,
                                                 @RequestParam(defaultValue = "0")int page,
-                                                @RequestParam(defaultValue = "20")int size){
-            Pageable pageable = PageRequest.of(page,size);
-            Page<LiveNewsEvent> result = liveContentService.getLivedContent(newsId,pageable);
-    
+                                                @RequestParam(defaultValue = "20")int size,
+                                                @RequestParam(defaultValue = "desc") String sort
+                                                                  ){
+            Sort.Direction direction = sort.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC;
+            Pageable pageable = PageRequest.of(page, size, Sort.by(direction, "createdAt"));
+            Page<LiveNewsEvent> result = liveContentService.getLivedContent(newsId, pageable);
             return ResponseEntity.ok(result);
         }
 
@@ -56,11 +60,9 @@
             try {
                 Long userId = null;
                 
-                // Ưu tiên lấy userId từ payload
                 if (dto.getUserId() != null) {
                     userId = dto.getUserId();
                 } else {
-                    // Nếu không có trong payload, thử lấy từ authentication
                     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
                     if (auth != null && auth.getPrincipal() != null) {
                         userId = ((UserPrincipal)auth.getPrincipal()).getId();

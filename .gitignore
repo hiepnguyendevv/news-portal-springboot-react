@@ -5,6 +5,8 @@ Desktop.ini
 # Logs
 *.log
 
+docs/
+
 # Node/Java build outputs
 news-frontend/node_modules/
 news-frontend/build/
